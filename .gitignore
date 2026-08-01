@@ -1,0 +1,36 @@
+# Environment / secrets
+.env
+.env.local
+*.env
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+frontend/.next/
+frontend/node_modules/
+
+# Python / FastAPI
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/__pycache__/
+backend/.venv/
+
+# AI/ML
+*.pt
+runs/
+ai_model/runs/
+ai_model/*.pt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Misc
+*.log
+Claude Setup.exe
