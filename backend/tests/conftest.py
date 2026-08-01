@@ -1,0 +1,62 @@
+from bson import ObjectId
+
+
+def _matches(doc: dict, query: dict) -> bool:
+    return all(doc.get(key) == value for key, value in query.items())
+
+
+class FakeCursor:
+    def __init__(self, docs: list[dict]):
+        self._docs = docs
+
+    def __aiter__(self):
+        return self._generator()
+
+    async def _generator(self):
+        for doc in self._docs:
+            yield doc
+
+
+class _Result:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class FakeCollection:
+    def __init__(self):
+        self.docs: list[dict] = []
+
+    def find(self, query: dict | None = None) -> FakeCursor:
+        query = query or {}
+        return FakeCursor([d for d in self.docs if _matches(d, query)])
+
+    async def find_one(self, query: dict) -> dict | None:
+        return next((d for d in self.docs if _matches(d, query)), None)
+
+    async def insert_one(self, doc: dict) -> _Result:
+        doc.setdefault("_id", ObjectId())
+        self.docs.append(doc)
+        return _Result(inserted_id=doc["_id"])
+
+    async def update_one(self, query: dict, update: dict) -> _Result:
+        for doc in self.docs:
+            if _matches(doc, query):
+                doc.update(update.get("$set", {}))
+                return _Result(matched_count=1)
+        return _Result(matched_count=0)
+
+    async def delete_many(self, query: dict) -> _Result:
+        before = len(self.docs)
+        self.docs = [d for d in self.docs if not _matches(d, query)]
+        return _Result(deleted_count=before - len(self.docs))
+
+
+class FakeDB:
+    def __init__(self):
+        self.users = FakeCollection()
+        self.patients = FakeCollection()
+        self.visits = FakeCollection()
+        self.images = FakeCollection()
+        self.predictions = FakeCollection()
+        self.corrections = FakeCollection()
