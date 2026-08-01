@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useCurrentUser } from "@/lib/auth";
 import { Patient, getPatient } from "@/lib/patients";
+import { Visit, listVisits } from "@/lib/visits";
 
 export default function PatientProfilePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { user, failed } = useCurrentUser();
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [visits, setVisits] = useState<Visit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,6 +28,9 @@ export default function PatientProfilePage() {
     getPatient(params.id)
       .then(setPatient)
       .catch(() => setError("Patient not found."));
+    listVisits(params.id)
+      .then(setVisits)
+      .catch(() => setVisits([]));
   }, [user, params.id]);
 
   if (!user) {
@@ -65,6 +70,37 @@ export default function PatientProfilePage() {
               <dd className="text-foreground">{patient.notes || "—"}</dd>
             </dl>
           </Card>
+        ) : null}
+
+        {patient ? (
+          <div className="mt-6 max-w-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Visits</h2>
+              <Link href={`/patients/${patient.id}/visits/new`}>
+                <Button variant="secondary">Add Visit</Button>
+              </Link>
+            </div>
+            {visits === null ? (
+              <p className="text-text-secondary">Loading visits…</p>
+            ) : visits.length === 0 ? (
+              <p className="text-text-secondary">No visits recorded yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {visits.map((visit) => (
+                  <li key={visit.id}>
+                    <Link href={`/patients/${patient.id}/visits/${visit.id}`}>
+                      <Card className="p-4 transition-colors hover:bg-surface">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-foreground">{visit.date}</span>
+                          <span className="text-sm text-text-secondary">{visit.complaint}</span>
+                        </div>
+                      </Card>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : null}
       </main>
     </div>
