@@ -75,3 +75,14 @@ async def test_me_without_cookie_returns_401():
     async with AsyncClient(transport=transport, base_url="https://test") as client:
         response = await client.get("/api/auth/me")
     assert response.status_code == 401
+
+
+async def test_logout_clears_cookie_and_deauthenticates():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
+        await client.post("/api/auth/login", json={"username": "dr.smith", "password": "s3cret-pw"})
+        logout_response = await client.post("/api/auth/logout")
+        me_response = await client.get("/api/auth/me")
+
+    assert logout_response.status_code == 204
+    assert me_response.status_code == 401
