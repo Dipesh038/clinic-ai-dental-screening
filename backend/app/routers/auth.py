@@ -49,3 +49,8 @@ async def login(
 @router.get("/me", response_model=LoginResponse)
 async def me(current_user: CurrentUser = Depends(get_current_user)) -> LoginResponse:
     return LoginResponse(username=current_user.username, role=current_user.role)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(response: Response) -> None:
+    response.delete_cookie(key="access_token", samesite="lax")

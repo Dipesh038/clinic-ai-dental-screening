@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     jwt_secret: str
     cloudinary_url: str = ""
     cookie_secure: bool = True
+    frontend_origin: str = "http://localhost:3000"
 
 
 settings = Settings()

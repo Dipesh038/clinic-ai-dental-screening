@@ -2,7 +2,9 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.db import close_client, get_client
 from app.routers.auth import router as auth_router
 
@@ -19,6 +21,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Clinic-Specific AI Dental Screening API", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_origin],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth_router)
 
 
