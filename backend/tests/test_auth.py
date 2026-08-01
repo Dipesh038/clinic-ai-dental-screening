@@ -31,7 +31,7 @@ def override_db():
 
 async def test_login_with_valid_credentials_sets_cookie():
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
         response = await client.post(
             "/api/auth/login", json={"username": "dr.smith", "password": "s3cret-pw"}
         )
@@ -42,7 +42,7 @@ async def test_login_with_valid_credentials_sets_cookie():
 
 async def test_login_with_wrong_password_returns_401():
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
         response = await client.post(
             "/api/auth/login", json={"username": "dr.smith", "password": "wrong-pw"}
         )
@@ -52,8 +52,26 @@ async def test_login_with_wrong_password_returns_401():
 
 async def test_login_with_unknown_username_returns_401():
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
         response = await client.post(
             "/api/auth/login", json={"username": "nobody", "password": "whatever"}
         )
+    assert response.status_code == 401
+
+
+async def test_me_with_valid_cookie_returns_current_user():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
+        await client.post(
+            "/api/auth/login", json={"username": "dr.smith", "password": "s3cret-pw"}
+        )
+        response = await client.get("/api/auth/me")
+    assert response.status_code == 200
+    assert response.json() == {"username": "dr.smith", "role": "dentist"}
+
+
+async def test_me_without_cookie_returns_401():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="https://test") as client:
+        response = await client.get("/api/auth/me")
     assert response.status_code == 401

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from app.auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token
 from app.config import settings
 from app.db import get_database
+from app.dependencies import CurrentUser, get_current_user
 from app.security import verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -43,3 +44,8 @@ async def login(
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return LoginResponse(username=user["username"], role=user["role"])
+
+
+@router.get("/me", response_model=LoginResponse)
+async def me(current_user: CurrentUser = Depends(get_current_user)) -> LoginResponse:
+    return LoginResponse(username=current_user.username, role=current_user.role)
