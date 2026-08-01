@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/AppHeader";
-import { CurrentUser, getCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<CurrentUser | null>(null);
+  const { user, failed } = useCurrentUser();
 
   useEffect(() => {
-    getCurrentUser()
-      .then(setUser)
-      .catch(() => router.replace("/login"));
-  }, [router]);
+    if (failed) router.replace("/login");
+  }, [failed, router]);
 
   if (!user) {
     return null;
