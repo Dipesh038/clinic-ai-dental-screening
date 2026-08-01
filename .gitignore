@@ -24,6 +24,9 @@ backend/.venv/
 runs/
 ai_model/runs/
 ai_model/*.pt
+ai_model/dataset/
+ai_model/dataset_raw/
+ai_model/*.zip
 
 # OS / editor
 .DS_Store
