@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     mongodb_uri: str
     jwt_secret: str
     cloudinary_url: str = ""
+    cookie_secure: bool = True
 
 
 settings = Settings()
