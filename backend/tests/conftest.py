@@ -9,6 +9,10 @@ class FakeCursor:
     def __init__(self, docs: list[dict]):
         self._docs = docs
 
+    def sort(self, key: str, direction: int = 1) -> "FakeCursor":
+        self._docs = sorted(self._docs, key=lambda d: d.get(key), reverse=direction < 0)
+        return self
+
     def __aiter__(self):
         return self._generator()
 

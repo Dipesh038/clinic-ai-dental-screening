@@ -1,0 +1,97 @@
+from datetime import datetime
+
+from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import APIRouter, Depends, HTTPException, status
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.db import get_database
+from app.dependencies import get_current_user
+from app.models.visit import VisitCreate, VisitOut, VisitUpdate
+
+router = APIRouter(tags=["visits"], dependencies=[Depends(get_current_user)])
+
+
+def _to_object_id(id_str: str) -> ObjectId:
+    try:
+        return ObjectId(id_str)
+    except InvalidId:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+
+def _doc_to_out(doc: dict) -> VisitOut:
+    return VisitOut(
+        id=str(doc["_id"]),
+        patient_id=str(doc["patientId"]),
+        date=doc["date"].date() if hasattr(doc["date"], "date") else doc["date"],
+        complaint=doc["complaint"],
+        notes=doc.get("notes", ""),
+    )
+
+
+async def _get_active_patient(db: AsyncIOMotorDatabase, patient_id: str) -> dict:
+    patient = await db.patients.find_one(
+        {"_id": _to_object_id(patient_id), "isDeleted": False}
+    )
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+    return patient
+
+
+@router.get("/api/patients/{patient_id}/visits", response_model=list[VisitOut])
+async def list_visits_for_patient(
+    patient_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> list[VisitOut]:
+    await _get_active_patient(db, patient_id)
+    cursor = db.visits.find({"patientId": patient_id}).sort("date", -1)
+    return [_doc_to_out(doc) async for doc in cursor]
+
+
+@router.post(
+    "/api/patients/{patient_id}/visits",
+    response_model=VisitOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_visit(
+    patient_id: str, visit: VisitCreate, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> VisitOut:
+    await _get_active_patient(db, patient_id)
+    doc = {
+        "patientId": patient_id,
+        "date": datetime.combine(visit.date, datetime.min.time()),
+        "complaint": visit.complaint,
+        "notes": visit.notes,
+    }
+    result = await db.visits.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return _doc_to_out(doc)
+
+
+@router.get("/api/visits/{visit_id}", response_model=VisitOut)
+async def get_visit(
+    visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> VisitOut:
+    doc = await db.visits.find_one({"_id": _to_object_id(visit_id)})
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+    return _doc_to_out(doc)
+
+
+@router.put("/api/visits/{visit_id}", response_model=VisitOut)
+async def update_visit(
+    visit_id: str, visit: VisitUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> VisitOut:
+    updates = visit.model_dump(exclude_unset=True)
+    if "date" in updates:
+        updates["date"] = datetime.combine(updates["date"], datetime.min.time())
+
+    object_id = _to_object_id(visit_id)
+    if updates:
+        result = await db.visits.update_one({"_id": object_id}, {"$set": updates})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    doc = await db.visits.find_one({"_id": object_id})
+    if doc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+    return _doc_to_out(doc)

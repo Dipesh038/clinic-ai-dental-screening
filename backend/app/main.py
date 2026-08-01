@@ -8,6 +8,7 @@ from app.config import settings
 from app.db import close_client, get_client
 from app.routers.auth import router as auth_router
 from app.routers.patients import router as patients_router
+from app.routers.visits import router as visits_router
 
 logger = logging.getLogger("app")
 
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(patients_router)
+app.include_router(visits_router)
 
 
 @app.get("/health")
