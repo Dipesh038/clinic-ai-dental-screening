@@ -103,3 +103,21 @@ async def test_patients_require_authentication():
     async with await _client() as client:
         response = await client.get("/api/patients")
     assert response.status_code == 401
+
+
+async def test_admin_role_forbidden_from_patients():
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        username="admin1", role=Role.ADMIN
+    )
+    async with await _client() as client:
+        response = await client.get("/api/patients")
+    assert response.status_code == 403
+
+
+async def test_receptionist_role_allowed_on_patients():
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        username="reception1", role=Role.RECEPTIONIST
+    )
+    async with await _client() as client:
+        response = await client.get("/api/patients")
+    assert response.status_code == 200

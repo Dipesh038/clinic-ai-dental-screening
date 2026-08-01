@@ -111,3 +111,12 @@ async def test_visits_require_authentication():
     async with await _client() as client:
         response = await client.get("/api/patients/000000000000000000000000/visits")
     assert response.status_code == 401
+
+
+async def test_admin_role_forbidden_from_visits():
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        username="admin1", role=Role.ADMIN
+    )
+    async with await _client() as client:
+        response = await client.get("/api/patients/000000000000000000000000/visits")
+    assert response.status_code == 403

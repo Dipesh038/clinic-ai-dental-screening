@@ -6,10 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.db import get_database
-from app.dependencies import get_current_user
+from app.dependencies import require_role
+from app.models.user import Role
 from app.models.visit import VisitCreate, VisitOut, VisitUpdate
 
-router = APIRouter(tags=["visits"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    tags=["visits"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))]
+)
 
 
 def _to_object_id(id_str: str) -> ObjectId:

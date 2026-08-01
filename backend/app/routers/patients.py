@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.db import get_database
-from app.dependencies import get_current_user
+from app.dependencies import require_role
 from app.models.patient import PatientCreate, PatientOut, PatientUpdate
+from app.models.user import Role
 
 router = APIRouter(
     prefix="/api/patients",
     tags=["patients"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))],
 )
 
 
