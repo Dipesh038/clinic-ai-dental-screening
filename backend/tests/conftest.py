@@ -1,8 +1,16 @@
+from __future__ import annotations
+
 from bson import ObjectId
 
 
 def _matches(doc: dict, query: dict) -> bool:
-    return all(doc.get(key) == value for key, value in query.items())
+    for key, value in query.items():
+        if isinstance(value, dict) and "$exists" in value:
+            if (key in doc) != value["$exists"]:
+                return False
+        elif doc.get(key) != value:
+            return False
+    return True
 
 
 class FakeCursor:
@@ -35,8 +43,15 @@ class FakeCollection:
         query = query or {}
         return FakeCursor([d for d in self.docs if _matches(d, query)])
 
-    async def find_one(self, query: dict) -> dict | None:
-        return next((d for d in self.docs if _matches(d, query)), None)
+    async def find_one(self, query: dict, sort: list[tuple[str, int]] | None = None) -> dict | None:
+        matches = [d for d in self.docs if _matches(d, query)]
+        if sort:
+            key, direction = sort[0]
+            matches.sort(key=lambda d: d.get(key), reverse=direction < 0)
+        return matches[0] if matches else None
+
+    async def count_documents(self, query: dict | None = None) -> int:
+        return len([d for d in self.docs if _matches(d, query or {})])
 
     async def insert_one(self, doc: dict) -> _Result:
         doc.setdefault("_id", ObjectId())

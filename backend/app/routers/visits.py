@@ -3,7 +3,7 @@ import logging
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.cloudinary_client import upload_image
@@ -14,6 +14,7 @@ from app.models.image import ImageOut
 from app.models.user import Role
 from app.models.visit import VisitCreate, VisitOut, VisitUpdate
 from app.routers.images import create_prediction_for_image
+from app.report import generate_pdf_report
 
 router = APIRouter(
     tags=["visits"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))]
@@ -155,4 +156,45 @@ async def upload_visit_image(
         visit_id=visit_id,
         image_url=image_url,
         top_prediction=top_detection.disease_name if top_detection else None,
+    )
+
+
+@router.get("/api/visits/{visit_id}/report", response_class=Response)
+async def download_visit_report(
+    visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> Response:
+    object_id = _to_object_id(visit_id)
+    visit = await db.visits.find_one({"_id": object_id})
+    if visit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    patient = await db.patients.find_one({"_id": _to_object_id(visit["patientId"])})
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    images = []
+    cursor = db.images.find({"visitId": visit_id})
+    async for image in cursor:
+        image_id = str(image["_id"])
+
+        # Get latest correction
+        correction = await db.corrections.find_one({"imageId": image_id}, sort=[("createdAt", -1)])
+
+        # Get latest prediction
+        prediction = await db.predictions.find_one({"imageId": image_id}, sort=[("createdAt", -1)])
+
+        images.append(
+            {
+                "image": image,
+                "corrections": correction["corrections"] if correction else None,
+                "predictions": prediction["detections"] if prediction else None,
+            }
+        )
+
+    pdf_bytes = generate_pdf_report(patient, visit, images)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="report_{visit_id}.pdf"'},
     )

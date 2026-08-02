@@ -222,6 +222,34 @@ async def test_upload_visit_image_rejects_files_over_5mb():
     assert response.json()["detail"] == "Image must be smaller than 5 MB"
 
 
+async def test_download_visit_report_returns_pdf(monkeypatch):
+    import app.routers.visits as visits_module
+
+    monkeypatch.setattr(
+        visits_module, "upload_image", lambda file_bytes, folder: "https://cloudinary/test.jpg"
+    )
+
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
+        response = await client.get(f"/api/visits/{visit_id}/report")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+
+
+async def test_download_visit_report_for_unknown_visit_returns_404():
+    async with await _client() as client:
+        response = await client.get("/api/visits/000000000000000000000000/report")
+    assert response.status_code == 404
+
+
 async def test_upload_visit_image_strips_jpeg_exif(monkeypatch):
     import app.routers.visits as visits_module
 

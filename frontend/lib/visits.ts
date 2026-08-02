@@ -53,3 +53,22 @@ export function uploadVisitImage(visitId: string, file: File): Promise<VisitImag
     body: formData,
   });
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export async function downloadVisitReport(visitId: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/visits/${visitId}/report`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Failed to download report");
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `report_${visitId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

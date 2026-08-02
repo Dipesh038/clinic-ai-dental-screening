@@ -125,3 +125,48 @@ async def test_get_latest_prediction_returns_most_recent(fake_db):
 
     assert response.status_code == 200
     assert response.json()["id"] == str(newer_id)
+
+
+async def test_save_corrections_and_get_latest(fake_db):
+    image_id = _insert_image(fake_db)
+    payload = {
+        "corrections": [
+            {
+                "class_id": 1,
+                "disease_name": "periodontitis",
+                "box": {"x1": 10.0, "y1": 20.0, "x2": 80.0, "y2": 120.0},
+            }
+        ]
+    }
+
+    async with await _client() as client:
+        # Save corrections
+        post_response = await client.post(f"/api/images/{image_id}/corrections", json=payload)
+        assert post_response.status_code == 200
+        post_body = post_response.json()
+        assert post_body["image_id"] == image_id
+        assert len(post_body["corrections"]) == 1
+        assert post_body["corrections"][0]["disease_name"] == "periodontitis"
+
+        # Get latest
+        get_response = await client.get(f"/api/images/{image_id}/corrections/latest")
+        assert get_response.status_code == 200
+        assert get_response.json()["id"] == post_body["id"]
+
+
+async def test_mark_image_reviewed(fake_db):
+    image_id = _insert_image(fake_db)
+
+    async with await _client() as client:
+        response = await client.post(f"/api/images/{image_id}/mark-reviewed")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == image_id
+    assert "reviewed_at" in body
+    assert body["reviewed_at"] is not None
+
+    # Verify db update
+    doc = fake_db.images.docs[0]
+    assert "reviewedAt" in doc
+    assert doc["reviewedAt"] is not None

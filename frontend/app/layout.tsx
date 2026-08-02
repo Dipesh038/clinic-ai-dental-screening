@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "AI-assisted dental screening & patient record prototype",
 };
 
+import { ToastProvider } from "@/components/ui/Toast";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-surface text-foreground">
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

@@ -14,6 +14,7 @@ from app.db import get_database
 from app.dependencies import require_role
 from app.models.image import ImageOut
 from app.models.prediction import DetectionOut, PredictionOut
+from app.models.correction import CorrectionIn, CorrectionOut, CorrectionItem
 from app.models.user import Role
 
 router = APIRouter(
@@ -44,6 +45,7 @@ def _image_doc_to_out(doc: dict) -> ImageOut:
         id=str(doc["_id"]),
         visit_id=str(doc["visitId"]),
         image_url=doc["imageUrl"],
+        reviewed_at=doc.get("reviewedAt"),
     )
 
 
@@ -114,3 +116,62 @@ async def predict_image(
             detail="AI model is not available",
         )
     return prediction
+
+
+@router.post("/api/images/{image_id}/corrections", response_model=CorrectionOut)
+async def save_corrections(
+    image_id: str, correction_in: CorrectionIn, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> CorrectionOut:
+    image = await db.images.find_one({"_id": _to_object_id(image_id)})
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    doc = {
+        "imageId": image_id,
+        "corrections": [item.model_dump() for item in correction_in.corrections],
+        "createdAt": datetime.now(timezone.utc),
+    }
+    result = await db.corrections.insert_one(doc)
+    doc["_id"] = result.inserted_id
+
+    return CorrectionOut(
+        id=str(doc["_id"]),
+        image_id=doc["imageId"],
+        corrections=[CorrectionItem(**c) for c in doc["corrections"]],
+        created_at=doc["createdAt"],
+    )
+
+
+@router.get("/api/images/{image_id}/corrections/latest", response_model=CorrectionOut)
+async def get_latest_correction(
+    image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> CorrectionOut:
+    image = await db.images.find_one({"_id": _to_object_id(image_id)})
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    cursor = db.corrections.find({"imageId": image_id}).sort("createdAt", -1)
+    async for doc in cursor:
+        return CorrectionOut(
+            id=str(doc["_id"]),
+            image_id=doc["imageId"],
+            corrections=[CorrectionItem(**c) for c in doc["corrections"]],
+            created_at=doc["createdAt"],
+        )
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Corrections not found")
+
+
+@router.post("/api/images/{image_id}/mark-reviewed", response_model=ImageOut)
+async def mark_image_reviewed(
+    image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> ImageOut:
+    object_id = _to_object_id(image_id)
+    image = await db.images.find_one({"_id": object_id})
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    reviewed_at = datetime.now(timezone.utc)
+    await db.images.update_one({"_id": object_id}, {"$set": {"reviewedAt": reviewed_at}})
+    image["reviewedAt"] = reviewed_at
+    return _image_doc_to_out(image)

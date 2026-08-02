@@ -13,6 +13,7 @@ from app.routers.auth import router as auth_router
 from app.routers.images import router as images_router
 from app.routers.patients import router as patients_router
 from app.routers.visits import router as visits_router
+from app.routers.dashboard import router as dashboard_router
 
 logger = logging.getLogger("app")
 
@@ -39,6 +40,7 @@ app.include_router(auth_router)
 app.include_router(patients_router)
 app.include_router(visits_router)
 app.include_router(images_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/health")
