@@ -25,8 +25,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {apiUrl && <link rel="preconnect" href={apiUrl} />}
       </head>
       <body className="min-h-full flex flex-col bg-surface text-foreground transition-colors duration-200">

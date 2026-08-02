@@ -1,10 +1,21 @@
 import { ButtonHTMLAttributes } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+type ButtonSize = "default" | "icon";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  size?: ButtonSize;
 }
+
+// Kept separate from variantClasses: sizing utilities (padding/height) must
+// never be passed in via className overrides on top of these, since Tailwind's
+// cascade order (not JSX string order) decides which utility wins and a
+// caller's "p-2 w-9 h-9" can silently lose to this base's "px-4 py-2 min-h-11".
+const sizeClasses: Record<ButtonSize, string> = {
+  default: "min-h-11 px-4 py-2",
+  icon: "h-9 w-9 p-0",
+};
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-primary text-white hover:bg-[#125ea3] focus-visible:outline-primary",
@@ -21,18 +32,19 @@ const variantClasses: Record<ButtonVariant, string> = {
 
 export function Button({
   variant = "primary",
+  size = "default",
   className = "",
   disabled,
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex min-h-11 items-center justify-center rounded px-4 py-2 text-sm font-medium transition-colors " +
+    "inline-flex items-center justify-center rounded text-sm font-medium transition-colors " +
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
     "disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <button
-      className={`${base} ${variantClasses[variant]} ${className}`.trim()}
+      className={`${base} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`.trim()}
       disabled={disabled}
       {...props}
     />

@@ -37,7 +37,7 @@ export default function EditPatientPage() {
       <main className="flex-1 p-6">
         <h1 className="mb-4 text-xl font-semibold text-foreground">Edit Patient</h1>
 
-        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f] dark:text-[#ef5350]">{error}</p> : null}
 
         {patient ? (
           <Card className="max-w-lg">

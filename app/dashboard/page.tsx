@@ -25,16 +25,16 @@ export default function DashboardPage() {
   if (!user) {
     return (
       <div className="flex flex-1 flex-col">
-        <header className="border-b border-border bg-white px-6 py-4 flex items-center justify-between">
-          <div className="h-6 w-36 bg-gray-200 animate-pulse rounded"></div>
-          <div className="h-8 w-20 bg-gray-200 animate-pulse rounded"></div>
+        <header className="border-b border-border bg-background px-6 py-4 flex items-center justify-between">
+          <div className="h-6 w-36 bg-border animate-pulse rounded"></div>
+          <div className="h-8 w-20 bg-border animate-pulse rounded"></div>
         </header>
         <main className="flex-1 p-6">
-          <div className="h-8 w-48 bg-gray-200 animate-pulse rounded mb-6"></div>
+          <div className="h-8 w-48 bg-border animate-pulse rounded mb-6"></div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
-            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
-            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-border"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-border"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-border"></Card>
           </div>
         </main>
       </div>
@@ -51,9 +51,9 @@ export default function DashboardPage() {
         
         {!stats ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
-            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
-            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-border"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-border"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-border"></Card>
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -69,7 +69,7 @@ export default function DashboardPage() {
             
             <Card className="flex flex-col">
               <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-2">Pending Reviews</h2>
-              <p className={`text-4xl font-bold ${stats.pending_reviews > 0 ? 'text-[#d32f2f]' : 'text-[#2e7d32]'}`}>
+              <p className={`text-4xl font-bold ${stats.pending_reviews > 0 ? 'text-[#d32f2f] dark:text-[#ef5350]' : 'text-[#2e7d32] dark:text-[#66bb6a]'}`}>
                 {stats.pending_reviews}
               </p>
             </Card>

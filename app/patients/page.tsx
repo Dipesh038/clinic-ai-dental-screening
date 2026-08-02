@@ -59,7 +59,7 @@ export default function PatientListPage() {
           </Link>
         </div>
 
-        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f] dark:text-[#ef5350]">{error}</p> : null}
 
         {patients === null && !error ? (
           <p className="text-text-secondary">Loading patients…</p>

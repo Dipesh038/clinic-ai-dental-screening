@@ -26,7 +26,7 @@ export function Select({ label, error, id, className = "", children, ...props }:
         {children}
       </select>
       {error ? (
-        <p id={`${selectId}-error`} className="text-sm text-[#d32f2f]">
+        <p id={`${selectId}-error`} className="text-sm text-[#d32f2f] dark:text-[#ef5350]">
           {error}
         </p>
       ) : null}

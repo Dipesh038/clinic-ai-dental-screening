@@ -131,7 +131,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
                       type="button"
                       onClick={() => handleDelete(img.id)}
                       disabled={isDeletingId === img.id}
-                      className="text-[#d32f2f] hover:bg-red-50 p-1 rounded transition-colors disabled:opacity-50"
+                      className="text-[#d32f2f] dark:text-[#ef5350] hover:bg-error/10 p-1 rounded transition-colors disabled:opacity-50"
                       title="Delete Image"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -176,7 +176,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
         ) : null}
 
         {uploadedImage ? (
-          <p role="status" className="text-sm text-[#2e7d32]">
+          <p role="status" className="text-sm text-[#2e7d32] dark:text-[#66bb6a]">
             Image uploaded successfully.
           </p>
         ) : null}
@@ -196,7 +196,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
         ) : null}
 
         {error ? (
-          <p role="alert" className="text-sm text-[#d32f2f]">
+          <p role="alert" className="text-sm text-[#d32f2f] dark:text-[#ef5350]">
             {error}
           </p>
         ) : null}

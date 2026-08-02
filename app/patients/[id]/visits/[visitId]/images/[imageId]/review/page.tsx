@@ -253,7 +253,7 @@ export default function AiReviewPage() {
           ← Back to visit
         </Link>
 
-        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f] dark:text-[#ef5350]">{error}</p> : null}
         {!image && !error ? <p className="text-text-secondary">Loading…</p> : null}
 
         {image ? (
@@ -262,7 +262,7 @@ export default function AiReviewPage() {
               <h1 className="text-xl font-semibold text-foreground flex items-center gap-3">
                 AI review
                 {image.reviewed_at && (
-                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-[#2e7d32] border border-success/20">
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-[#2e7d32] dark:text-[#66bb6a] border border-success/20">
                     Reviewed
                   </span>
                 )}
@@ -385,7 +385,7 @@ export default function AiReviewPage() {
                           <span className="font-medium capitalize text-foreground flex items-center gap-2">
                             {box.disease_name}
                             {correction && !isEditing && (
-                              <span className="text-[10px] uppercase tracking-wide bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                              <span className="text-[10px] uppercase tracking-wide bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                                 corrected
                               </span>
                             )}

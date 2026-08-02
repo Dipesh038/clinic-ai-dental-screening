@@ -25,7 +25,7 @@ export function TextArea({ label, error, id, className = "", ...props }: TextAre
         {...props}
       />
       {error ? (
-        <p id={`${textareaId}-error`} className="text-sm text-[#d32f2f]">
+        <p id={`${textareaId}-error`} className="text-sm text-[#d32f2f] dark:text-[#ef5350]">
           {error}
         </p>
       ) : null}

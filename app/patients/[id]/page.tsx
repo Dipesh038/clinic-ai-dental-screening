@@ -45,7 +45,7 @@ export default function PatientProfilePage() {
           ← Back to patients
         </Link>
 
-        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f] dark:text-[#ef5350]">{error}</p> : null}
 
         {!patient && !error ? (
           <p className="text-text-secondary">Loading…</p>
