@@ -1,43 +1,47 @@
-# Environment / secrets
-.env
-.env.local
-*.env
-!.env.example
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Node / Next.js
-node_modules/
-.next/
-out/
-frontend/.next/
-frontend/node_modules/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Python / FastAPI
-__pycache__/
-*.pyc
-.venv/
-venv/
-backend/__pycache__/
-backend/.venv/
+# testing
+/coverage
 
-# AI/ML
-*.pt
-runs/
-ai_model/runs/
-ai_model/*.pt
-ai_model/dataset/
-ai_model/dataset_raw/
-ai_model/*.zip
+# next.js
+/.next/
+/out/
 
-# OS / editor
+# production
+/build
+
+# misc
 .DS_Store
-Thumbs.db
-.vscode/
-.idea/
+*.pem
 
-# Misc
-*.log
-Claude Setup.exe
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-CLAUDE.md
+# env files (can opt-in for committing if needed)
+.env*
 
-docs/
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+.venv/
+
+backend/.venv/
+__pycache__/
+backend/ai_model/weights/
+

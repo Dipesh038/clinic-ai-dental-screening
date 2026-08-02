@@ -1,75 +1,36 @@
-# Clinic-Specific AI Dental Screening
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-An AI-powered web application for dental clinics that provides automated screening for common dental conditions (caries, plaque, gingivitis) using a YOLOv8 object detection model. It includes a complete workflow for dentists and receptionists to manage patients, record visits, upload dental images, review AI predictions, and generate PDF reports.
+## Getting Started
 
-## Features
+First, run the development server:
 
-- **Role-based Access Control**: Secure login for Dentists, Receptionists, and Admins via JWT cookies.
-- **Patient Management**: Full CRUD operations for patient records and visit history.
-- **Image Upload & Storage**: Secure image uploads to Cloudinary with EXIF data stripping for privacy.
-- **AI Diagnostics**: Automatic bounding-box predictions for dental conditions using a trained YOLOv8 model.
-- **Human-in-the-Loop AI Review**: Interactive UI for dentists to review, correct, and approve AI predictions (bounding box drawing and editing).
-- **Grad-CAM Explanations**: Heatmap overlays to explain the AI predictions (using a dummy ResNet18 model for demonstration).
-- **PDF Reporting**: Instantly generate and download visit reports summarizing AI detections and dentist corrections.
-- **Clinic Dashboard**: Real-time stats on patients, visits, and pending AI reviews.
-
-## Tech Stack
-
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4
-- **Backend**: FastAPI (Python 3.12+), MongoDB Atlas (Motor Asyncio), PyJWT, Pytest
-- **AI/ML**: Ultralytics YOLOv8, PyTorch, PyTorch Grad-CAM, Torchvision
-- **Cloud/Infra**: Cloudinary (Image Hosting), GitHub Actions (CI)
-
-## Local Setup
-
-### 1. Backend Setup
-
-1. **Clone the repository and cd into `backend/`**
-2. **Create and activate a virtual environment**:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Environment Variables**:
-   Copy `.env.example` to `.env` and fill in your MongoDB URI and Cloudinary credentials:
-   ```bash
-   cp .env.example .env
-   ```
-5. **Run the FastAPI server**:
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-
-### 2. Frontend Setup
-
-1. **cd into `frontend/`**
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-3. **Environment Variables**:
-   Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
-4. **Run the Next.js dev server**:
-   ```bash
-   npm run dev
-   ```
-
-## Deployment
-
-- **Backend (Render/Railway)**: Configured via `render.yaml`. Connect your GitHub repo to Render to automatically deploy the FastAPI service.
-- **Frontend (Vercel)**: Connect your GitHub repo to Vercel and it will auto-detect the Next.js framework. Make sure to set `NEXT_PUBLIC_API_URL` to your live backend URL in the Vercel dashboard.
-
-## Tests
-The backend includes a comprehensive `pytest` suite for the API endpoints.
 ```bash
-cd backend
-source .venv/bin/activate
-PYTHONPATH=. pytest tests/
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
