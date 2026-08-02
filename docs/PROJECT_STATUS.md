@@ -162,15 +162,15 @@ Review page); `cd frontend && npx tsc --noEmit` → clean.
 
 ### Week 4 (T401–T412) (COMPLETE)
 - [x] **T401** Full manual run-through/bugfix — completed continuously throughout.
-- [x] **T402** Deploy backend (Render/Railway) — `render.yaml` created.
-- [x] **T403** Deploy frontend (Vercel) — Next.js natively supported; instructions added to README.
-- [ ] **T404** Verify Cloudinary+Atlas in prod — pending actual deployment.
+- [x] **T402** Deploy backend (Render) — live at `https://ai-dental-screening-backend.onrender.com`.
+- [x] **T403** Deploy frontend (Vercel) — live at `https://clinic-ai-dental-screening.vercel.app`.
+- [x] **T404** Verify Cloudinary+Atlas in prod — verified, MongoDB Atlas & Cloudinary connected and active.
 - [x] **T405** CI (lint+pytest on push) — `.github/workflows/ci.yml` created.
 - [x] **T406** README — updated with comprehensive instructions.
 - [x] **T407** `docs/AI_Results.md` — updated with Grad-CAM information.
 - [x] **T408** `docs/Future_Work.md` — created roadmap.
 - [ ] **T409** Demo video — pending manual recording.
-- [x] **T410** Final cleanup — unused code removed.
+- [x] **T410** Final cleanup — unused code and datasets removed, repo restructured.
 - [ ] **T411** Tag `v1.0` — pending manual git tag.
 - [ ] **T412** Final written report — pending manual submission.
 
@@ -178,12 +178,10 @@ Review page); `cd frontend && npx tsc --noEmit` → clean.
 
 ## 3. What's remaining (in backlog order)
 
-### Week 4 — Testing, Deployment, Write-up
-- [ ] **T404** Verify Cloudinary+Atlas in prod
-- [ ] **T409** Demo video
-- [ ] **T411** Tag `v1.0`
+### Week 4 — Manual Deliverables
+- [ ] **T409** Demo video recording
+- [ ] **T411** Tag `v1.0` git release tag
 - [ ] **T412** Final written report
-- [ ] **PW1** Confirm free-tier accounts are set up
 - [ ] **PW6** Write the dataset license/attribution note
 
 ---
