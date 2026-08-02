@@ -102,9 +102,7 @@ async def update_patient(
 
 
 @router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_patient(
-    patient_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
-) -> None:
+async def delete_patient(patient_id: str, db: AsyncIOMotorDatabase = Depends(get_database)) -> None:
     result = await db.patients.update_one(
         {"_id": _to_object_id(patient_id), "isDeleted": False},
         {"$set": {"isDeleted": True}},

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import date as date_
 
 from pydantic import BaseModel, Field

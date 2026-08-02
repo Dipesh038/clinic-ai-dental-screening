@@ -78,9 +78,7 @@ async def test_update_patient_persists_changes():
     async with await _client() as client:
         create_resp = await client.post("/api/patients", json=PATIENT_PAYLOAD)
         patient_id = create_resp.json()["id"]
-        update_resp = await client.put(
-            f"/api/patients/{patient_id}", json={"contact": "555-9999"}
-        )
+        update_resp = await client.put(f"/api/patients/{patient_id}", json={"contact": "555-9999"})
 
     assert update_resp.status_code == 200
     assert update_resp.json()["contact"] == "555-9999"

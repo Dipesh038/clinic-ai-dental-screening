@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -40,7 +41,7 @@ async def login(
         value=token,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="lax",
+        samesite="none" if settings.cookie_secure else "lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return LoginResponse(username=user["username"], role=user["role"])
@@ -53,4 +54,8 @@ async def me(current_user: CurrentUser = Depends(get_current_user)) -> LoginResp
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response) -> None:
-    response.delete_cookie(key="access_token", samesite="lax")
+    response.delete_cookie(
+        key="access_token",
+        samesite="none" if settings.cookie_secure else "lax",
+        secure=settings.cookie_secure,
+    )
