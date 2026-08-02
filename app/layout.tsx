@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 
 import { ToastProvider } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 
 export default function RootLayout({
   children,
@@ -22,17 +23,19 @@ export default function RootLayout({
 }>) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {apiUrl && <link rel="preconnect" href={apiUrl} />}
       </head>
-      <body className="min-h-full flex flex-col bg-surface text-foreground">
-        <ToastProvider>
-          <Breadcrumbs />
-          {children}
-        </ToastProvider>
+      <body className="min-h-full flex flex-col bg-surface text-foreground transition-colors duration-200">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <ToastProvider>
+            <Breadcrumbs />
+            {children}
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

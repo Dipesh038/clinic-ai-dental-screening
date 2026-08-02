@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { CurrentUser, logout } from "@/lib/auth";
 
 interface AppHeaderProps {
@@ -32,6 +33,7 @@ export function AppHeader({ user }: AppHeaderProps) {
         </nav>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
+        <ThemeToggle />
         <span className="hidden text-sm text-text-secondary sm:inline">
           {user.username} <span className="capitalize">({user.role})</span>
         </span>
