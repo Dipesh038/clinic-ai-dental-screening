@@ -120,3 +120,33 @@ async def test_admin_role_forbidden_from_visits():
     async with await _client() as client:
         response = await client.get("/api/patients/000000000000000000000000/visits")
     assert response.status_code == 403
+
+
+async def test_upload_visit_image_returns_url(monkeypatch):
+    import app.routers.visits as visits_module
+
+    monkeypatch.setattr(
+        visits_module, "upload_image", lambda file_bytes, folder: "https://cloudinary/test.jpg"
+    )
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        response = await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["image_url"] == "https://cloudinary/test.jpg"
+    assert body["visit_id"] == visit_id
+
+
+async def test_upload_image_for_unknown_visit_returns_404():
+    async with await _client() as client:
+        response = await client.post(
+            "/api/visits/000000000000000000000000/images",
+            files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
+    assert response.status_code == 404

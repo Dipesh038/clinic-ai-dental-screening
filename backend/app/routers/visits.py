@@ -2,11 +2,13 @@ from datetime import datetime
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.cloudinary_client import upload_image
 from app.db import get_database
 from app.dependencies import require_role
+from app.models.image import ImageOut
 from app.models.user import Role
 from app.models.visit import VisitCreate, VisitOut, VisitUpdate
 
@@ -98,3 +100,26 @@ async def update_visit(
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
     return _doc_to_out(doc)
+
+
+@router.post(
+    "/api/visits/{visit_id}/images",
+    response_model=ImageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_visit_image(
+    visit_id: str,
+    file: UploadFile = File(...),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> ImageOut:
+    object_id = _to_object_id(visit_id)
+    visit = await db.visits.find_one({"_id": object_id})
+    if visit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    file_bytes = await file.read()
+    image_url = upload_image(file_bytes, folder=f"visits/{visit_id}")
+
+    doc = {"visitId": visit_id, "imageUrl": image_url}
+    result = await db.images.insert_one(doc)
+    return ImageOut(id=str(result.inserted_id), visit_id=visit_id, image_url=image_url)
