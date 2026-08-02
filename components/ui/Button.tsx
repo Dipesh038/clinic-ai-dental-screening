@@ -18,16 +18,22 @@ const sizeClasses: Record<ButtonSize, string> = {
 };
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-white hover:bg-[#125ea3] focus-visible:outline-primary",
-  // bg-secondary (#26a69a) fails WCAG AA contrast (2.99:1) with white text at this
-  // size; #1d8377 is the same hue darkened to pass (4.6:1).
+  primary:
+    "bg-[#1976d2] text-white hover:bg-[#125ea3] focus-visible:outline-[#1976d2] " +
+    "dark:bg-primary dark:text-[#121212] dark:hover:bg-[#BBDEFB] dark:focus-visible:outline-primary " +
+    "dark:disabled:bg-[#333333] dark:disabled:text-[#666666] dark:disabled:border-none",
   secondary:
-    "bg-[#1d8377] text-white hover:bg-[#166b62] focus-visible:outline-secondary",
+    "bg-transparent border border-border text-foreground hover:bg-surface focus-visible:outline-secondary " +
+    "dark:border-primary dark:text-primary dark:hover:bg-primary/8 dark:focus-visible:outline-primary " +
+    "dark:disabled:bg-transparent dark:disabled:border-[#333333] dark:disabled:text-[#666666]",
   ghost:
-    "bg-transparent text-primary border border-border hover:bg-surface focus-visible:outline-primary",
-  // bg-error (#f44336) fails WCAG AA contrast (3.68:1) with white text at this
-  // size; #d32f2f is the same hue darkened to pass (4.98:1).
-  danger: "bg-[#d32f2f] text-white hover:bg-[#b71c1c] focus-visible:outline-error",
+    "bg-transparent text-primary hover:bg-surface focus-visible:outline-primary " +
+    "dark:text-primary dark:hover:bg-primary/8 dark:focus-visible:outline-primary " +
+    "dark:disabled:bg-transparent dark:disabled:text-[#666666]",
+  danger: 
+    "bg-[#d32f2f] text-white hover:bg-[#b71c1c] focus-visible:outline-error " +
+    "dark:bg-error dark:text-[#121212] dark:hover:bg-[#EF9A9A] dark:focus-visible:outline-error " +
+    "dark:disabled:bg-[#333333] dark:disabled:text-[#666666]",
 };
 
 export function Button({
@@ -40,7 +46,7 @@ export function Button({
   const base =
     "inline-flex items-center justify-center rounded text-sm font-medium transition-colors " +
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
-    "disabled:cursor-not-allowed disabled:opacity-50";
+    "disabled:cursor-not-allowed light:disabled:opacity-50";
 
   return (
     <button

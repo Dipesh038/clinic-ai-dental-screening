@@ -6,7 +6,10 @@ import { useTheme } from "next-themes";
 import { Button } from "./Button";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  // resolvedTheme (not theme) reflects what's actually rendered: with
+  // defaultTheme="system", theme is the literal string "system" until the
+  // user picks explicitly, which broke both the icon and the toggle target.
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -25,9 +28,9 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
-      {theme === "dark" ? (
+      {resolvedTheme === "dark" ? (
         <Sun className="h-5 w-5" />
       ) : (
         <Moon className="h-5 w-5 text-text-secondary" />

@@ -107,12 +107,12 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
           <div className="flex flex-col gap-4 border-b border-border pb-4">
             <h3 className="text-sm font-semibold text-foreground">Previously Uploaded Images</h3>
             {existingImages.map((img) => (
-              <div key={img.id} className="flex flex-col gap-2 rounded border border-border p-3 bg-surface">
+              <div key={img.id} className="flex flex-col gap-2 rounded border border-border p-3 bg-background">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.image_url}
                   alt="Existing dental image"
-                  className="aspect-[4/3] w-full rounded border border-border bg-background object-cover"
+                  className="aspect-[4/3] w-full rounded border border-border bg-background dark:bg-black object-contain"
                 />
                 <div className="flex items-center justify-between">
                   {img.top_prediction ? (
@@ -131,7 +131,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
                       type="button"
                       onClick={() => handleDelete(img.id)}
                       disabled={isDeletingId === img.id}
-                      className="text-[#d32f2f] dark:text-[#ef5350] hover:bg-error/10 p-1 rounded transition-colors disabled:opacity-50"
+                      className="text-[#d32f2f] dark:text-error hover:bg-error/10 p-1 rounded transition-colors disabled:opacity-50"
                       title="Delete Image"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -150,7 +150,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
           <img
             src={displayedImageUrl}
             alt={uploadedImage ? "Uploaded dental image" : "Selected dental image preview"}
-            className="aspect-[4/3] w-full rounded border border-border bg-surface object-cover"
+            className="aspect-[4/3] w-full rounded border border-border bg-surface dark:bg-black object-contain"
           />
         ) : (
           <div className="flex aspect-[4/3] w-full items-center justify-center rounded border border-dashed border-border bg-background text-sm text-text-secondary">
@@ -182,7 +182,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
         ) : null}
 
         {uploadedImage?.top_prediction ? (
-          <div className="flex flex-col gap-2 rounded border border-border bg-surface p-3">
+          <div className="flex flex-col gap-2 rounded border border-border bg-background p-3">
             <p className="text-sm font-medium text-foreground">
               Top AI prediction: {uploadedImage.top_prediction}
             </p>
@@ -196,7 +196,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
         ) : null}
 
         {error ? (
-          <p role="alert" className="text-sm text-[#d32f2f] dark:text-[#ef5350]">
+          <p role="alert" className="text-sm text-[#d32f2f] dark:text-error">
             {error}
           </p>
         ) : null}
