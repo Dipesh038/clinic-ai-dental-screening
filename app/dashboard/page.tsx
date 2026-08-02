@@ -23,7 +23,22 @@ export default function DashboardPage() {
   }, [user]);
 
   if (!user) {
-    return null;
+    return (
+      <div className="flex flex-1 flex-col">
+        <header className="border-b border-border bg-white px-6 py-4 flex items-center justify-between">
+          <div className="h-6 w-36 bg-gray-200 animate-pulse rounded"></div>
+          <div className="h-8 w-20 bg-gray-200 animate-pulse rounded"></div>
+        </header>
+        <main className="flex-1 p-6">
+          <div className="h-8 w-48 bg-gray-200 animate-pulse rounded mb-6"></div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -35,7 +50,11 @@ export default function DashboardPage() {
         </h1>
         
         {!stats ? (
-          <p className="text-text-secondary">Loading statistics...</p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+            <Card className="flex flex-col h-32 animate-pulse bg-gray-100"></Card>
+          </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <Card className="flex flex-col">
