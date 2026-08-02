@@ -13,7 +13,7 @@ from app.models.user import Role
 router = APIRouter(
     prefix="/api/patients",
     tags=["patients"],
-    dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))],
+    dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))],
 )
 
 

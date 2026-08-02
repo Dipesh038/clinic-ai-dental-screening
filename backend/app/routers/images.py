@@ -22,7 +22,7 @@ from app.models.user import Role
 from app.grad_cam import generate_heatmap_for_crop
 
 router = APIRouter(
-    tags=["images"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))]
+    tags=["images"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))]
 )
 logger = logging.getLogger("app.images")
 

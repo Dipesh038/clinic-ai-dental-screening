@@ -17,7 +17,7 @@ from app.routers.images import create_prediction_for_image
 from app.report import generate_pdf_report
 
 router = APIRouter(
-    tags=["visits"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))]
+    tags=["visits"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))]
 )
 logger = logging.getLogger("app.visits")
 
