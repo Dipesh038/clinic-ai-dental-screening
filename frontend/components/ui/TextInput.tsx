@@ -24,7 +24,7 @@ export function TextInput({ label, error, id, className = "", ...props }: TextIn
         {...props}
       />
       {error ? (
-        <p id={`${inputId}-error`} className="text-sm text-error">
+        <p id={`${inputId}-error`} className="text-sm text-[#d32f2f]">
           {error}
         </p>
       ) : null}

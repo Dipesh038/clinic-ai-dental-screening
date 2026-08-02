@@ -45,9 +45,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             className={`rounded-md px-4 py-3 shadow-lg transition-all duration-300 ${
+              // bg-success/bg-error fail WCAG AA contrast with white text at this
+              // size; these darker shades of the same hue pass.
               toast.type === "success"
-                ? "bg-success text-white"
-                : "bg-error text-white"
+                ? "bg-[#2e7d32] text-white"
+                : "bg-[#d32f2f] text-white"
             }`}
           >
             <p className="text-sm font-medium">{toast.message}</p>

@@ -50,7 +50,7 @@ export default function DashboardPage() {
             
             <Card className="flex flex-col">
               <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-2">Pending Reviews</h2>
-              <p className={`text-4xl font-bold ${stats.pending_reviews > 0 ? 'text-error' : 'text-success'}`}>
+              <p className={`text-4xl font-bold ${stats.pending_reviews > 0 ? 'text-[#d32f2f]' : 'text-[#2e7d32]'}`}>
                 {stats.pending_reviews}
               </p>
             </Card>

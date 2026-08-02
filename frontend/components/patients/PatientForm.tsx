@@ -83,7 +83,7 @@ export function PatientForm({
         onChange={(e) => setValues({ ...values, notes: e.target.value })}
       />
       {error ? (
-        <p role="alert" className="text-sm text-error">
+        <p role="alert" className="text-sm text-[#d32f2f]">
           {error}
         </p>
       ) : null}

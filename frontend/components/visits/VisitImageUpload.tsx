@@ -86,7 +86,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
             className="aspect-[4/3] w-full rounded border border-border bg-surface object-cover"
           />
         ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center rounded border border-dashed border-border bg-surface text-sm text-text-secondary">
+          <div className="flex aspect-[4/3] w-full items-center justify-center rounded border border-dashed border-border bg-background text-sm text-text-secondary">
             No image selected
           </div>
         )}
@@ -109,7 +109,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
         ) : null}
 
         {uploadedImage ? (
-          <p role="status" className="text-sm text-success">
+          <p role="status" className="text-sm text-[#2e7d32]">
             Image uploaded successfully.
           </p>
         ) : null}
@@ -129,7 +129,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
         ) : null}
 
         {error ? (
-          <p role="alert" className="text-sm text-error">
+          <p role="alert" className="text-sm text-[#d32f2f]">
             {error}
           </p>
         ) : null}

@@ -56,7 +56,7 @@ export default function VisitDetailPage() {
           ← Back to patient
         </Link>
 
-        {error ? <p className="text-error">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
 
         {!visit && !error ? <p className="text-text-secondary">Loading…</p> : null}
 

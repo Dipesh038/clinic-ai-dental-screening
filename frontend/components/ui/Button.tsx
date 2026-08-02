@@ -8,11 +8,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-primary text-white hover:bg-[#125ea3] focus-visible:outline-primary",
+  // bg-secondary (#26a69a) fails WCAG AA contrast (2.99:1) with white text at this
+  // size; #1d8377 is the same hue darkened to pass (4.6:1).
   secondary:
-    "bg-secondary text-white hover:bg-[#1d8377] focus-visible:outline-secondary",
+    "bg-[#1d8377] text-white hover:bg-[#166b62] focus-visible:outline-secondary",
   ghost:
     "bg-transparent text-primary border border-border hover:bg-surface focus-visible:outline-primary",
-  danger: "bg-error text-white hover:bg-[#d32f2f] focus-visible:outline-error",
+  // bg-error (#f44336) fails WCAG AA contrast (3.68:1) with white text at this
+  // size; #d32f2f is the same hue darkened to pass (4.98:1).
+  danger: "bg-[#d32f2f] text-white hover:bg-[#b71c1c] focus-visible:outline-error",
 };
 
 export function Button({

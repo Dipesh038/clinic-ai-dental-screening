@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import logging
+from io import BytesIO
 from pathlib import Path
+from urllib.request import urlopen
+
+from PIL import Image
 
 from app.config import settings
 from app.models.prediction import BoundingBox, DetectionOut
@@ -36,7 +40,13 @@ class YoloPredictor:
 
     def predict(self, image_url: str) -> list[DetectionOut]:
         detections: list[DetectionOut] = []
-        results = self._model.predict(source=image_url, verbose=False)
+        # Fetch into memory and hand Ultralytics a PIL Image rather than the raw
+        # URL: passing a URL makes it call check_file(download_dir="."), which
+        # downloads the image into the process's cwd and never cleans it up.
+        with urlopen(image_url) as response:
+            image = Image.open(BytesIO(response.read()))
+            image.load()
+        results = self._model.predict(source=image, verbose=False)
 
         for result in results:
             boxes = getattr(result, "boxes", None)

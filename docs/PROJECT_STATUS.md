@@ -1,6 +1,6 @@
 # Project Status — Clinic-Specific AI Dental Screening
 
-Last updated: 2026-08-02 (Session 3)
+Last updated: 2026-08-02 (Session 4)
 Purpose: single source of truth on (1) what is built, (2) what is left, and (3) known
 bugs/risks — written so any AI coding agent (Claude Code, Codex CLI, Antigravity, etc.)
 or a human can resume work without re-reading the whole codebase or the Volume 0–5 specs
@@ -130,8 +130,20 @@ macOS/Linux Python environment because the checked-out `.venv` is Windows-only.
 - [x] **T311** Dashboard stats (Total Patients, Total Visits, Pending Reviews) —
   `GET /api/dashboard/stats` (`backend/app/routers/dashboard.py`),
   rendered on `frontend/app/dashboard/page.tsx`
-- [ ] **T312** Responsive pass — not verified (no automated check; needs manual pass)
-- [ ] **T313** Accessibility pass — not verified (no automated check; needs manual pass)
+- [x] **T312** Responsive pass — done (Session 4). Drove the real app (login →
+  dashboard → patients → patient → visit → upload → AI review → edit corrections)
+  at 375px/768px/1440px with Playwright against the live backend + Atlas DB.
+  Found and fixed two real bugs: `AppHeader` had no wrap handling and crammed the
+  logo/nav/username/logout into one row, breaking at mobile width (now wraps, hides
+  username/role below `sm:`); the AI Review page's heading + action buttons had the
+  same problem (now wraps). The patients table's apparent "cut off" Contact column
+  on mobile was a false alarm — `Table` already wraps in `overflow-x-auto` and is
+  genuinely scrollable (verified via `scrollWidth > clientWidth`).
+- [x] **T313** Accessibility pass — done (Session 4). Ran `@axe-core/playwright`
+  against login/dashboard/patients/patient-detail/visit-detail/AI-review: found 4
+  violations (empty table header, missing page `<h1>` on Patients, and WCAG AA
+  color-contrast failures — see B10) and fixed all of them; final scan is
+  **0 violations** on every page tested.
 - [x] **T314** pytest coverage for corrections/report/dashboard — corrections and
   mark-reviewed tests already existed (`backend/tests/test_images.py`); report and
   dashboard had none, so this session added `test_download_visit_report_returns_pdf`,
@@ -171,10 +183,11 @@ validation metrics are recorded, and real sample-image inference verification ca
 ### Rest of Week 3
 | ID | Task | Depends on |
 |---|---|---|
-| T312 | Responsive pass (manual) | T301–T311 |
-| T313 | Accessibility pass (manual) | T301–T311 |
 | T316 | Commit + push Week 3 milestone | T301–T315 |
 | T308–T310 | (stretch) Grad-CAM | optional, not required for submission |
+
+T312/T313 are now done (see §2). T316 (push) is still pending — commits exist
+locally but haven't been pushed to a remote (see §1 for whether one is configured).
 
 ### Week 4 — Testing, Deployment, Write-up
 T401 full manual run-through/bugfix · T402 deploy backend (Render/Railway) ·
@@ -304,6 +317,25 @@ corrected field names in `report.py`, and added `sort=` support + `count_documen
 **Lesson:** this is exactly the failure mode CLAUDE.md's "every new route needs a
 happy-path test before moving on" rule (§6) exists to prevent — two routes were marked
 done without one.
+
+### B10 — ✅ FIXED: Several UI elements failed WCAG AA color contrast
+Found via `@axe-core/playwright` during the T313 accessibility pass (Session 4).
+CLAUDE.md §8 pins exact hex values for Secondary (`#26A69A`), Success (`#4CAF50`),
+and Error (`#F44336`) as design tokens (`frontend/app/globals.css`). Used as white
+text on a solid background (the secondary/danger `Button` variants, both `Toast`
+variants, the AI Review "Reviewed" badge, the bounding-box label) or as colored text
+directly on a white/light background (every `text-error` validation message, 13
+files), these exact values fall short of the 4.5:1 ratio WCAG AA requires for normal
+text — as low as 2.53:1 for the Reviewed badge and 2.78:1 for a success-colored
+number on the dashboard. Confirmed with the user before changing anything, since it
+meant deviating from the literal spec values. Fixed by using darker shades of the
+same hue (`#d32f2f` for error/danger, `#2e7d32` for success, `#1d8377` for secondary
+button backgrounds) only at these text/white-text-on-color call sites — the
+documented hex values are untouched everywhere else (borders, tinted `/10`
+backgrounds, icons). Also fixed two non-contrast a11y findings on the same pass: the
+Patients table's trailing action-column `<th>` had no text for screen readers (added
+`sr-only` "Actions"), and the Patients page had no `<h1>` (added one). Final axe scan:
+**0 violations** across login/dashboard/patients/patient-detail/visit-detail/AI-review.
 
 ---
 

@@ -214,22 +214,22 @@ export default function AiReviewPage() {
           ← Back to visit
         </Link>
 
-        {error ? <p className="text-error">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
         {!image && !error ? <p className="text-text-secondary">Loading…</p> : null}
 
         {image ? (
           <Card className="max-w-6xl">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-xl font-semibold text-foreground flex items-center gap-3">
                 AI review
                 {image.reviewed_at && (
-                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success border border-success/20">
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-[#2e7d32] border border-success/20">
                     Reviewed
                   </span>
                 )}
               </h1>
-              
-              <div className="flex gap-2">
+
+              <div className="flex flex-wrap items-center gap-2">
                 {!isEditing && (
                   <>
                     <Button variant="ghost" onClick={handleEditClick}>
@@ -293,7 +293,7 @@ export default function AiReviewPage() {
                       className="absolute border-2 border-error bg-error/10"
                       style={boxStyle(box.box, imageSize)}
                     >
-                      <span className="absolute left-0 top-0 bg-error px-1 py-0.5 text-xs font-medium text-white whitespace-nowrap">
+                      <span className="absolute left-0 top-0 bg-[#d32f2f] px-1 py-0.5 text-xs font-medium text-white whitespace-nowrap">
                         {box.disease_name}
                       </span>
                       {isEditing && (
@@ -302,7 +302,7 @@ export default function AiReviewPage() {
                             e.stopPropagation();
                             handleDeleteBox(index);
                           }}
-                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-error text-white hover:bg-[#d32f2f] text-xs font-bold leading-none cursor-pointer z-10"
+                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#d32f2f] text-white hover:bg-[#b71c1c] text-xs font-bold leading-none cursor-pointer z-10"
                         >
                           ×
                         </button>

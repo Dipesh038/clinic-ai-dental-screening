@@ -58,7 +58,7 @@ export default function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
           {error ? (
-            <p role="alert" className="text-sm text-error">
+            <p role="alert" className="text-sm text-[#d32f2f]">
               {error}
             </p>
           ) : null}

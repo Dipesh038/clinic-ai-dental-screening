@@ -44,6 +44,7 @@ export default function PatientListPage() {
     <div className="flex flex-1 flex-col">
       <AppHeader user={user} />
       <main className="flex-1 p-6">
+        <h1 className="mb-4 text-xl font-semibold text-foreground">Patients</h1>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div className="max-w-xs flex-1">
             <TextInput
@@ -58,7 +59,7 @@ export default function PatientListPage() {
           </Link>
         </div>
 
-        {error ? <p className="text-error">{error}</p> : null}
+        {error ? <p className="text-[#d32f2f]">{error}</p> : null}
 
         {patients === null && !error ? (
           <p className="text-text-secondary">Loading patients…</p>
@@ -70,7 +71,9 @@ export default function PatientListPage() {
                 <th className="px-4 py-3 font-medium text-text-secondary">Date of birth</th>
                 <th className="px-4 py-3 font-medium text-text-secondary">Gender</th>
                 <th className="px-4 py-3 font-medium text-text-secondary">Contact</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
