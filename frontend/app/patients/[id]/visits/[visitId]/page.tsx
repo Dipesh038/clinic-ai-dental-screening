@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Card } from "@/components/ui/Card";
+import { VisitImageUpload } from "@/components/visits/VisitImageUpload";
 import { useCurrentUser } from "@/lib/auth";
 import { Visit, getVisit } from "@/lib/visits";
 
@@ -48,16 +49,16 @@ export default function VisitDetailPage() {
 
         {visit ? (
           <Card className="max-w-lg">
-            <h1 className="mb-4 text-xl font-semibold text-foreground">{visit.complaint}</h1>
+            <div className="mb-4 flex items-center justify-between">
+              <h1 className="text-xl font-semibold text-foreground">{visit.complaint}</h1>
+            </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <dt className="text-text-secondary">Date</dt>
               <dd className="text-foreground">{visit.date}</dd>
               <dt className="text-text-secondary">Notes</dt>
               <dd className="text-foreground">{visit.notes || "—"}</dd>
             </dl>
-            <p className="mt-4 text-sm text-text-secondary">
-              Image upload coming up next.
-            </p>
+            <VisitImageUpload patientId={params.id} visitId={visit.id} />
           </Card>
         ) : null}
       </main>

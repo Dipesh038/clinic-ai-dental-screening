@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -8,13 +9,19 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.cloudinary_client import upload_image
 from app.db import get_database
 from app.dependencies import require_role
+from app.image_processing import strip_exif_metadata
 from app.models.image import ImageOut
 from app.models.user import Role
 from app.models.visit import VisitCreate, VisitOut, VisitUpdate
+from app.routers.images import create_prediction_for_image
 
 router = APIRouter(
     tags=["visits"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))]
 )
+logger = logging.getLogger("app.visits")
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 
 def _to_object_id(id_str: str) -> ObjectId:
@@ -35,9 +42,7 @@ def _doc_to_out(doc: dict) -> VisitOut:
 
 
 async def _get_active_patient(db: AsyncIOMotorDatabase, patient_id: str) -> dict:
-    patient = await db.patients.find_one(
-        {"_id": _to_object_id(patient_id), "isDeleted": False}
-    )
+    patient = await db.patients.find_one({"_id": _to_object_id(patient_id), "isDeleted": False})
     if patient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     return patient
@@ -73,9 +78,7 @@ async def create_visit(
 
 
 @router.get("/api/visits/{visit_id}", response_model=VisitOut)
-async def get_visit(
-    visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
-) -> VisitOut:
+async def get_visit(visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)) -> VisitOut:
     doc = await db.visits.find_one({"_id": _to_object_id(visit_id)})
     if doc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
@@ -112,14 +115,44 @@ async def upload_visit_image(
     file: UploadFile = File(...),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ) -> ImageOut:
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only JPEG and PNG images are supported",
+        )
+
     object_id = _to_object_id(visit_id)
     visit = await db.visits.find_one({"_id": object_id})
     if visit is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
 
     file_bytes = await file.read()
+    if len(file_bytes) > MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image must be smaller than 5 MB",
+        )
+
+    file_bytes = strip_exif_metadata(file_bytes, file.content_type or "")
     image_url = upload_image(file_bytes, folder=f"visits/{visit_id}")
 
     doc = {"visitId": visit_id, "imageUrl": image_url}
     result = await db.images.insert_one(doc)
-    return ImageOut(id=str(result.inserted_id), visit_id=visit_id, image_url=image_url)
+    doc["_id"] = result.inserted_id
+
+    prediction = None
+    try:
+        prediction = await create_prediction_for_image(str(result.inserted_id), doc, db)
+    except Exception:
+        logger.exception("Automatic AI prediction failed for image_id=%s", result.inserted_id)
+
+    top_detection = None
+    if prediction and prediction.detections:
+        top_detection = max(prediction.detections, key=lambda detection: detection.confidence)
+
+    return ImageOut(
+        id=str(result.inserted_id),
+        visit_id=visit_id,
+        image_url=image_url,
+        top_prediction=top_detection.disease_name if top_detection else None,
+    )

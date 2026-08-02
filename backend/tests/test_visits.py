@@ -143,6 +143,48 @@ async def test_upload_visit_image_returns_url(monkeypatch):
     assert body["visit_id"] == visit_id
 
 
+async def test_upload_visit_image_triggers_prediction(monkeypatch):
+    import app.routers.visits as visits_module
+    from app.models.prediction import BoundingBox, DetectionOut, PredictionOut
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr(
+        visits_module, "upload_image", lambda file_bytes, folder: "https://cloudinary/test.jpg"
+    )
+
+    async def fake_create_prediction_for_image(image_id, image, db):
+        return PredictionOut(
+            id="prediction-1",
+            image_id=image_id,
+            detections=[
+                DetectionOut(
+                    class_id=1,
+                    disease_name="plaque",
+                    confidence=0.91,
+                    box=BoundingBox(x1=1, y1=2, x2=3, y2=4),
+                )
+            ],
+            latency_ms=12,
+            created_at=datetime.now(timezone.utc),
+        )
+
+    monkeypatch.setattr(
+        visits_module, "create_prediction_for_image", fake_create_prediction_for_image
+    )
+
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        response = await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
+
+    assert response.status_code == 201
+    assert response.json()["top_prediction"] == "plaque"
+
+
 async def test_upload_image_for_unknown_visit_returns_404():
     async with await _client() as client:
         response = await client.post(
@@ -150,3 +192,58 @@ async def test_upload_image_for_unknown_visit_returns_404():
             files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
         )
     assert response.status_code == 404
+
+
+async def test_upload_visit_image_rejects_unsupported_type():
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        response = await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth.gif", b"fake-image-bytes", "image/gif")},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Only JPEG and PNG images are supported"
+
+
+async def test_upload_visit_image_rejects_files_over_5mb():
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        response = await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("large.png", b"x" * (5 * 1024 * 1024 + 1), "image/png")},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Image must be smaller than 5 MB"
+
+
+async def test_upload_visit_image_strips_jpeg_exif(monkeypatch):
+    import app.routers.visits as visits_module
+
+    uploaded_bytes = {}
+
+    def fake_upload_image(file_bytes, folder):
+        uploaded_bytes["value"] = file_bytes
+        return "https://cloudinary/test.jpg"
+
+    jpeg_with_exif = (
+        b"\xff\xd8" + b"\xff\xe1" + (8).to_bytes(2, "big") + b"Exif\x00\x00" + b"\xff\xd9"
+    )
+
+    monkeypatch.setattr(visits_module, "upload_image", fake_upload_image)
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        response = await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth.jpg", jpeg_with_exif, "image/jpeg")},
+        )
+
+    assert response.status_code == 201
+    assert uploaded_bytes["value"] == b"\xff\xd8\xff\xd9"

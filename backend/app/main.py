@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from contextlib import asynccontextmanager
 
@@ -5,8 +7,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.ai import load_predictor
 from app.db import close_client, get_client
 from app.routers.auth import router as auth_router
+from app.routers.images import router as images_router
 from app.routers.patients import router as patients_router
 from app.routers.visits import router as visits_router
 
@@ -18,6 +22,7 @@ async def lifespan(app: FastAPI):
     client = get_client()
     await client.admin.command("ping")
     logger.info("MongoDB Atlas connection established")
+    load_predictor()
     yield
     close_client()
 
@@ -33,6 +38,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(patients_router)
 app.include_router(visits_router)
+app.include_router(images_router)
 
 
 @app.get("/health")
