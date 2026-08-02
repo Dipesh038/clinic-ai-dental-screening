@@ -19,6 +19,7 @@ import {
   getLatestPrediction,
   markImageReviewed,
   saveCorrections,
+  getHeatmap,
 } from "@/lib/images";
 import { VisitImage } from "@/lib/visits";
 
@@ -52,6 +53,11 @@ export default function AiReviewPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeBoxes, setActiveBoxes] = useState<CorrectionItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Heatmap state
+  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
+  const [heatmapBoxIndex, setHeatmapBoxIndex] = useState<number | null>(null);
+  const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
 
   // Drawing state
   const imgRef = useRef<HTMLImageElement>(null);
@@ -143,6 +149,39 @@ export default function AiReviewPage() {
 
   const handleDeleteBox = (index: number) => {
     setActiveBoxes((prev) => prev.filter((_, i) => i !== index));
+    if (heatmapBoxIndex === index) {
+      setHeatmapUrl(null);
+      setHeatmapBoxIndex(null);
+    }
+  };
+
+  const handleToggleHeatmap = async (index: number) => {
+    if (heatmapBoxIndex === index) {
+      // Toggle off
+      setHeatmapUrl(null);
+      setHeatmapBoxIndex(null);
+      return;
+    }
+
+    // Since our backend generates heatmap based on the *prediction* index,
+    // we only support heatmap for raw predictions right now (not edited ones).
+    // The index corresponds to prediction.detections array.
+    if (isEditing || correction) {
+      addToast("Grad-CAM heatmaps are only available for raw AI predictions.", "error");
+      return;
+    }
+
+    setIsLoadingHeatmap(true);
+    setHeatmapBoxIndex(index);
+    try {
+      const url = await getHeatmap(params.imageId, index);
+      setHeatmapUrl(url);
+    } catch {
+      addToast("Failed to load heatmap", "error");
+      setHeatmapBoxIndex(null);
+    } finally {
+      setIsLoadingHeatmap(false);
+    }
   };
 
   const getCoordinates = (e: MouseEvent<HTMLDivElement>) => {
@@ -307,6 +346,14 @@ export default function AiReviewPage() {
                           ×
                         </button>
                       )}
+                      {heatmapBoxIndex === index && heatmapUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img 
+                          src={heatmapUrl} 
+                          alt="Grad-CAM Heatmap"
+                          className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-multiply"
+                        />
+                      )}
                     </div>
                 ))}
                 
@@ -343,6 +390,20 @@ export default function AiReviewPage() {
                               </span>
                             )}
                           </span>
+                          {!isEditing && !correction && (
+                             <Button 
+                               variant="ghost" 
+                               className="px-2 py-1 text-xs" 
+                               onClick={() => handleToggleHeatmap(index)}
+                               disabled={isLoadingHeatmap && heatmapBoxIndex !== index}
+                             >
+                               {isLoadingHeatmap && heatmapBoxIndex === index 
+                                 ? "Loading..." 
+                                 : heatmapBoxIndex === index 
+                                   ? "Hide Heatmap" 
+                                   : "Show Heatmap"}
+                             </Button>
+                          )}
                         </div>
                         <p className="mt-2 text-xs text-text-secondary">
                           Box: {Math.round(box.box.x1)}, {Math.round(box.box.y1)} -{" "}

@@ -6,8 +6,11 @@ from time import perf_counter
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from io import BytesIO
+from urllib.request import urlopen
+from PIL import Image
 
 from app.ai import get_predictor
 from app.db import get_database
@@ -16,6 +19,7 @@ from app.models.image import ImageOut
 from app.models.prediction import DetectionOut, PredictionOut
 from app.models.correction import CorrectionIn, CorrectionOut, CorrectionItem
 from app.models.user import Role
+from app.grad_cam import generate_heatmap_for_crop
 
 router = APIRouter(
     tags=["images"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))]
@@ -84,6 +88,19 @@ async def get_image(image_id: str, db: AsyncIOMotorDatabase = Depends(get_databa
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
     return _image_doc_to_out(image)
+
+
+@router.delete("/api/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_image(image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
+    object_id = _to_object_id(image_id)
+    image = await db.images.find_one({"_id": object_id})
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    await db.images.delete_one({"_id": object_id})
+    await db.predictions.delete_many({"imageId": image_id})
+    await db.corrections.delete_many({"imageId": image_id})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/api/images/{image_id}/predictions/latest", response_model=PredictionOut)
@@ -175,3 +192,52 @@ async def mark_image_reviewed(
     await db.images.update_one({"_id": object_id}, {"$set": {"reviewedAt": reviewed_at}})
     image["reviewedAt"] = reviewed_at
     return _image_doc_to_out(image)
+
+
+@router.get("/api/images/{image_id}/heatmap/{detection_index}", response_class=Response)
+async def get_image_heatmap(
+    image_id: str, detection_index: int, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> Response:
+    image = await db.images.find_one({"_id": _to_object_id(image_id)})
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    cursor = db.predictions.find({"imageId": image_id}).sort("createdAt", -1)
+    prediction = None
+    async for p in cursor:
+        prediction = p
+        break
+
+    if prediction is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
+
+    detections = prediction.get("detections", [])
+    if detection_index < 0 or detection_index >= len(detections):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Detection not found")
+
+    box = detections[detection_index]["box"]
+
+    # Load original image
+    try:
+        with urlopen(image["imageUrl"]) as response:
+            original_image = Image.open(BytesIO(response.read()))
+            original_image.load()
+    except Exception as e:
+        logger.error(f"Failed to fetch image for heatmap: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to load image"
+        )
+
+    # Crop to bounding box
+    crop = original_image.crop((box["x1"], box["y1"], box["x2"], box["y2"]))
+
+    # Generate heatmap
+    try:
+        heatmap_bytes = generate_heatmap_for_crop(crop)
+    except Exception as e:
+        logger.error(f"Failed to generate heatmap: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate heatmap"
+        )
+
+    return Response(content=heatmap_bytes, media_type="image/jpeg")

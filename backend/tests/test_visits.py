@@ -275,3 +275,40 @@ async def test_upload_visit_image_strips_jpeg_exif(monkeypatch):
 
     assert response.status_code == 201
     assert uploaded_bytes["value"] == b"\xff\xd8\xff\xd9"
+
+
+async def test_list_visit_images(fake_db, monkeypatch):
+    import app.routers.visits as visits_module
+
+    monkeypatch.setattr(
+        visits_module, "upload_image", lambda file_bytes, folder: "https://cloudinary/test.jpg"
+    )
+
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+
+        # Upload two images
+        await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth1.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
+        await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth2.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
+
+        response = await client.get(f"/api/visits/{visit_id}/images")
+
+    assert response.status_code == 200
+    images = response.json()
+    assert len(images) == 2
+    assert images[0]["image_url"] == "https://cloudinary/test.jpg"
+    assert images[1]["image_url"] == "https://cloudinary/test.jpg"
+
+
+async def test_list_visit_images_for_unknown_visit_returns_404():
+    async with await _client() as client:
+        response = await client.get("/api/visits/000000000000000000000000/images")
+    assert response.status_code == 404

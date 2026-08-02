@@ -159,6 +159,38 @@ async def upload_visit_image(
     )
 
 
+@router.get("/api/visits/{visit_id}/images", response_model=list[ImageOut])
+async def list_visit_images(
+    visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+) -> list[ImageOut]:
+    object_id = _to_object_id(visit_id)
+    visit = await db.visits.find_one({"_id": object_id})
+    if visit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
+
+    cursor = db.images.find({"visitId": visit_id}).sort("_id", -1)
+
+    images = []
+    async for image in cursor:
+        from app.routers.images import _image_doc_to_out
+
+        # We need to fetch the top prediction for each image
+        image_out = _image_doc_to_out(image)
+        prediction = await db.predictions.find_one(
+            {"imageId": str(image["_id"])}, sort=[("createdAt", -1)]
+        )
+
+        top_prediction = None
+        if prediction and prediction.get("detections"):
+            top_detection = max(prediction["detections"], key=lambda d: d.get("confidence", 0))
+            top_prediction = top_detection.get("disease_name")
+
+        image_out.top_prediction = top_prediction
+        images.append(image_out)
+
+    return images
+
+
 @router.get("/api/visits/{visit_id}/report", response_class=Response)
 async def download_visit_report(
     visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)

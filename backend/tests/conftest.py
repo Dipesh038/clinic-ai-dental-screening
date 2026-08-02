@@ -65,6 +65,13 @@ class FakeCollection:
                 return _Result(matched_count=1)
         return _Result(matched_count=0)
 
+    async def delete_one(self, query: dict) -> _Result:
+        for i, doc in enumerate(self.docs):
+            if _matches(doc, query):
+                del self.docs[i]
+                return _Result(deleted_count=1)
+        return _Result(deleted_count=0)
+
     async def delete_many(self, query: dict) -> _Result:
         before = len(self.docs)
         self.docs = [d for d in self.docs if not _matches(d, query)]

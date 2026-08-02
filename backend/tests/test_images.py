@@ -170,3 +170,86 @@ async def test_mark_image_reviewed(fake_db):
     doc = fake_db.images.docs[0]
     assert "reviewedAt" in doc
     assert doc["reviewedAt"] is not None
+
+
+async def test_get_image_heatmap_returns_image(fake_db, monkeypatch):
+    import io
+    from PIL import Image
+
+    image_id = _insert_image(fake_db)
+    prediction_id = ObjectId()
+    fake_db.predictions.docs.append(
+        {
+            "_id": prediction_id,
+            "imageId": image_id,
+            "detections": [
+                {
+                    "class_id": 0,
+                    "disease_name": "cavity",
+                    "confidence": 0.87,
+                    "box": {"x1": 10.0, "y1": 20.0, "x2": 80.0, "y2": 120.0},
+                }
+            ],
+            "latencyMs": 20,
+            "createdAt": "2026-01-01T00:00:00Z",
+        }
+    )
+
+    # Mock urlopen to return a valid 1x1 image
+    class MockResponse:
+        def __init__(self, content):
+            self.content = content
+
+        def read(self):
+            return self.content
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    def mock_urlopen(url):
+        img = Image.new("RGB", (200, 200), color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        return MockResponse(buf.getvalue())
+
+    monkeypatch.setattr(images_module, "urlopen", mock_urlopen)
+
+    # Mock heatmap generation to return dummy bytes
+    monkeypatch.setattr(
+        images_module, "generate_heatmap_for_crop", lambda crop: b"dummy_heatmap_data"
+    )
+
+    async with await _client() as client:
+        response = await client.get(f"/api/images/{image_id}/heatmap/0")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == b"dummy_heatmap_data"
+
+
+async def test_delete_image_deletes_image_and_related_data(fake_db):
+    image_id = _insert_image(fake_db)
+
+    # Add fake predictions and corrections
+    fake_db.predictions.docs.append({"_id": ObjectId(), "imageId": image_id})
+    fake_db.corrections.docs.append({"_id": ObjectId(), "imageId": image_id})
+
+    async with await _client() as client:
+        response = await client.delete(f"/api/images/{image_id}")
+
+    assert response.status_code == 204
+
+    # Verify deletions
+    assert len(fake_db.images.docs) == 0
+    assert len(fake_db.predictions.docs) == 0
+    assert len(fake_db.corrections.docs) == 0
+
+
+async def test_delete_unknown_image_returns_404():
+    async with await _client() as client:
+        response = await client.delete("/api/images/000000000000000000000000")
+
+    assert response.status_code == 404

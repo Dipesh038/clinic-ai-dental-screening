@@ -16,3 +16,5 @@ pytest==8.3.4
 pytest-asyncio==0.25.2
 httpx==0.28.1
 reportlab==4.2.5
+grad-cam==1.5.4
+torchvision==0.20.1

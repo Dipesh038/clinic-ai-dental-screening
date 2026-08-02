@@ -37,6 +37,10 @@ export function getVisit(visitId: string): Promise<Visit> {
   return apiFetch<Visit>(`/api/visits/${visitId}`);
 }
 
+export function listVisitImages(visitId: string): Promise<VisitImage[]> {
+  return apiFetch<VisitImage[]>(`/api/visits/${visitId}/images`);
+}
+
 export function updateVisit(visitId: string, input: Partial<VisitInput>): Promise<Visit> {
   return apiFetch<Visit>(`/api/visits/${visitId}`, {
     method: "PUT",
@@ -51,6 +55,12 @@ export function uploadVisitImage(visitId: string, file: File): Promise<VisitImag
   return apiFetch<VisitImage>(`/api/visits/${visitId}/images`, {
     method: "POST",
     body: formData,
+  });
+}
+
+export function deleteVisitImage(imageId: string): Promise<void> {
+  return apiFetch<void>(`/api/images/${imageId}`, {
+    method: "DELETE",
   });
 }
 

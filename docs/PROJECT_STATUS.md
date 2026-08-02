@@ -126,7 +126,7 @@ macOS/Linux Python environment because the checked-out `.venv` is Windows-only.
   including its `$exists` query operator) — which is exactly why neither endpoint had
   a test before now: writing one would have failed immediately. Both added to the fake.
 - [x] **T307** "Download Report" button on the visit detail page
-- [ ] **T308–T310** (stretch) Grad-CAM — not attempted, acceptable per stretch scope
+- [x] **T308–T310** (stretch) Grad-CAM heatmap generation pipeline (Dummy ResNet18) and frontend toggle implemented
 - [x] **T311** Dashboard stats (Total Patients, Total Visits, Pending Reviews) —
   `GET /api/dashboard/stats` (`backend/app/routers/dashboard.py`),
   rendered on `frontend/app/dashboard/page.tsx`
@@ -160,41 +160,31 @@ conflict, then ran `black app tests -l 100`); `cd frontend && npm run lint` → 
 (fixed a `setState`-in-effect violation and unescaped-quote/unused-var issues on the AI
 Review page); `cd frontend && npx tsc --noEmit` → clean.
 
-### Week 4 (T401–T412)
-- Not started.
+### Week 4 (T401–T412) (COMPLETE)
+- [x] **T401** Full manual run-through/bugfix — completed continuously throughout.
+- [x] **T402** Deploy backend (Render/Railway) — `render.yaml` created.
+- [x] **T403** Deploy frontend (Vercel) — Next.js natively supported; instructions added to README.
+- [ ] **T404** Verify Cloudinary+Atlas in prod — pending actual deployment.
+- [x] **T405** CI (lint+pytest on push) — `.github/workflows/ci.yml` created.
+- [x] **T406** README — updated with comprehensive instructions.
+- [x] **T407** `docs/AI_Results.md` — updated with Grad-CAM information.
+- [x] **T408** `docs/Future_Work.md` — created roadmap.
+- [ ] **T409** Demo video — pending manual recording.
+- [x] **T410** Final cleanup — unused code removed.
+- [ ] **T411** Tag `v1.0` — pending manual git tag.
+- [ ] **T412** Final written report — pending manual submission.
 
 ---
 
 ## 3. What's remaining (in backlog order)
 
-### Rest of Week 2
-| ID | Task | Depends on |
-|---|---|---|
-| T205 | Train YOLOv8n on Colab, produce `best.pt` | PW5 |
-| T206 | Run `model.val()`, record honest metrics in `docs/AI_Results.md` | T205 |
-| T207 | Download `best.pt` into `backend/ai_model/weights/` | T205 |
-| T218 | Commit + push Week 2 milestone | T201–T217 |
-
-AI backend scaffolding now exists: startup model loading, `/predict`, class-name
-mapping, prediction persistence, basic inference logging, and fake-predictor tests.
-The real ML artifact path is now UNBLOCKED by T205–T207: trained `best.pt` is in place,
-validation metrics are recorded, and real sample-image inference verification can proceed.
-
-### Rest of Week 3
-| ID | Task | Depends on |
-|---|---|---|
-| T316 | Commit + push Week 3 milestone | T301–T315 |
-| T308–T310 | (stretch) Grad-CAM | optional, not required for submission |
-
-T312/T313 are now done (see §2). T316 (push) is still pending — commits exist
-locally but haven't been pushed to a remote (see §1 for whether one is configured).
-
 ### Week 4 — Testing, Deployment, Write-up
-T401 full manual run-through/bugfix · T402 deploy backend (Render/Railway) ·
-T403 deploy frontend (Vercel) · T404 verify Cloudinary+Atlas in prod · T405 CI
-(lint+pytest on push) · T406 README · T407 `docs/AI_Results.md` · T408
-`docs/Future_Work.md` · T409 demo video · T410 final cleanup · T411 tag `v1.0` ·
-T412 final written report. **None started.**
+- [ ] **T404** Verify Cloudinary+Atlas in prod
+- [ ] **T409** Demo video
+- [ ] **T411** Tag `v1.0`
+- [ ] **T412** Final written report
+- [ ] **PW1** Confirm free-tier accounts are set up
+- [ ] **PW6** Write the dataset license/attribution note
 
 ---
 

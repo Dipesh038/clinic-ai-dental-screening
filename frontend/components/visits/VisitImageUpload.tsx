@@ -2,10 +2,11 @@
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { TrashIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { VisitImage, uploadVisitImage } from "@/lib/visits";
+import { VisitImage, uploadVisitImage, listVisitImages, deleteVisitImage } from "@/lib/visits";
 
 interface VisitImageUploadProps {
   patientId: string;
@@ -18,9 +19,17 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadedImage, setUploadedImage] = useState<VisitImage | null>(null);
+  const [existingImages, setExistingImages] = useState<VisitImage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    listVisitImages(visitId)
+      .then(setExistingImages)
+      .catch((err) => console.error("Failed to list existing images", err));
+  }, [visitId]);
 
   useEffect(() => {
     return () => {
@@ -56,6 +65,7 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
     try {
       const image = await uploadVisitImage(visitId, selectedFile);
       setUploadedImage(image);
+      setExistingImages((prev) => [image, ...prev]);
       setSelectedFile(null);
       clearPreviewUrl();
       if (inputRef.current) inputRef.current.value = "";
@@ -65,6 +75,21 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
       addToast("Upload failed", "error");
     } finally {
       setIsUploading(false);
+    }
+  }
+
+  async function handleDelete(imageId: string) {
+    if (!confirm("Are you sure you want to delete this image?")) return;
+    
+    setIsDeletingId(imageId);
+    try {
+      await deleteVisitImage(imageId);
+      setExistingImages((prev) => prev.filter((img) => img.id !== imageId));
+      addToast("Image deleted successfully", "success");
+    } catch {
+      addToast("Failed to delete image", "error");
+    } finally {
+      setIsDeletingId(null);
     }
   }
 
@@ -78,6 +103,48 @@ export function VisitImageUpload({ patientId, visitId }: VisitImageUploadProps) 
       </div>
 
       <div className="flex flex-col gap-4">
+        {existingImages.length > 0 && (
+          <div className="flex flex-col gap-4 border-b border-border pb-4">
+            <h3 className="text-sm font-semibold text-foreground">Previously Uploaded Images</h3>
+            {existingImages.map((img) => (
+              <div key={img.id} className="flex flex-col gap-2 rounded border border-border p-3 bg-surface">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.image_url}
+                  alt="Existing dental image"
+                  className="aspect-[4/3] w-full rounded border border-border bg-background object-cover"
+                />
+                <div className="flex items-center justify-between">
+                  {img.top_prediction ? (
+                    <span className="text-sm font-medium text-foreground">AI: {img.top_prediction}</span>
+                  ) : (
+                    <span className="text-sm text-text-secondary">AI: No conditions detected</span>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/patients/${patientId}/visits/${visitId}/images/${img.id}/review`}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Review
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(img.id)}
+                      disabled={isDeletingId === img.id}
+                      className="text-[#d32f2f] hover:bg-red-50 p-1 rounded transition-colors disabled:opacity-50"
+                      title="Delete Image"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h3 className="text-sm font-semibold text-foreground mt-2">Upload New Image</h3>
+        
         {displayedImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

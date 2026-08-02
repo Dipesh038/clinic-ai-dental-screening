@@ -100,7 +100,7 @@ def generate_pdf_report(patient: dict, visit: dict, image_data: list[dict]) -> b
         elements.append(Spacer(1, 0.1 * inch))
 
         # Detections
-        if corrections:
+        if corrections is not None:
             elements.append(Paragraph("Dentist Corrections:", styles["Heading3"]))
             if not corrections:
                 elements.append(Paragraph("No conditions found.", styles["Normal"]))
@@ -109,7 +109,7 @@ def generate_pdf_report(patient: dict, visit: dict, image_data: list[dict]) -> b
                     elements.append(
                         Paragraph(f"• {c['disease_name'].capitalize()}", styles["Normal"])
                     )
-        elif predictions:
+        elif predictions is not None:
             elements.append(Paragraph("AI Predictions:", styles["Heading3"]))
             if not predictions:
                 elements.append(Paragraph("No conditions detected.", styles["Normal"]))
