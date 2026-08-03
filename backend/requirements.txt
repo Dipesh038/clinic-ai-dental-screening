@@ -17,4 +17,14 @@ pytest-asyncio==0.25.2
 httpx==0.28.1
 reportlab==4.2.5
 grad-cam==1.5.4
-torchvision==0.20.1
+
+# On Linux (Render), plain PyPI resolves torch to the CUDA-enabled build by
+# default -- 700MB+ and memory-heavy at runtime even though there's no GPU to
+# use it, which was OOM-crashing the free-tier (512MB RAM) backend on real
+# inference requests. Pin the CPU-only build there explicitly; macOS dev
+# wheels are already CPU-only with no separate variant, so leave those alone.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu ; sys_platform == "linux"
+torchvision==0.20.1+cpu ; sys_platform == "linux"
+torch==2.5.1 ; sys_platform == "darwin"
+torchvision==0.20.1 ; sys_platform == "darwin"
