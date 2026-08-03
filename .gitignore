@@ -43,5 +43,9 @@ next-env.d.ts
 
 backend/.venv/
 __pycache__/
-backend/ai_model/weights/
+
+# Trained YOLO weights (best.pt) ARE committed on purpose: the deployed Render
+# backend builds straight from this git checkout with no other way to fetch
+# the model, so ignoring it here means production silently runs with no AI
+# model at all (every prediction returns nothing, for every image).
 
