@@ -54,14 +54,14 @@ def _image_doc_to_out(doc: dict) -> ImageOut:
 
 
 async def create_prediction_for_image(
-    image_id: str, image: dict, db: AsyncIOMotorDatabase
+    image_id: str, image: dict, db: AsyncIOMotorDatabase, image_bytes: bytes | None = None
 ) -> PredictionOut | None:
     predictor = get_predictor()
     if predictor is None:
         return None
 
     started_at = perf_counter()
-    detections = predictor.predict(image["imageUrl"])
+    detections = predictor.predict(image_url=image["imageUrl"], image_bytes=image_bytes)
     latency_ms = round((perf_counter() - started_at) * 1000)
 
     doc = {

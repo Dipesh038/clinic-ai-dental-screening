@@ -38,14 +38,19 @@ class YoloPredictor:
         self._model = YOLO(str(weights_path))
         self._class_names = class_names
 
-    def predict(self, image_url: str) -> list[DetectionOut]:
+    def predict(self, image_url: str | None = None, image_bytes: bytes | None = None) -> list[DetectionOut]:
         detections: list[DetectionOut] = []
-        # Fetch into memory and hand Ultralytics a PIL Image rather than the raw
-        # URL: passing a URL makes it call check_file(download_dir="."), which
-        # downloads the image into the process's cwd and never cleans it up.
-        with urlopen(image_url) as response:
-            image = Image.open(BytesIO(response.read()))
-            image.load()
+        if image_bytes:
+            image = Image.open(BytesIO(image_bytes))
+        elif image_url:
+            # Fetch into memory and hand Ultralytics a PIL Image rather than the raw
+            # URL: passing a URL makes it call check_file(download_dir="."), which
+            # downloads the image into the process's cwd and never cleans it up.
+            with urlopen(image_url) as response:
+                image = Image.open(BytesIO(response.read()))
+        else:
+            raise ValueError("Must provide either image_url or image_bytes")
+        image.load()
         results = self._model.predict(source=image, verbose=False)
 
         for result in results:

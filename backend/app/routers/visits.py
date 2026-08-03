@@ -143,13 +143,16 @@ async def upload_visit_image(
 
     prediction = None
     try:
-        prediction = await create_prediction_for_image(str(result.inserted_id), doc, db)
+        prediction = await create_prediction_for_image(str(result.inserted_id), doc, db, image_bytes=file_bytes)
     except Exception:
         logger.exception("Automatic AI prediction failed for image_id=%s", result.inserted_id)
 
     top_detection = None
-    if prediction and prediction.detections:
-        top_detection = max(prediction.detections, key=lambda detection: detection.confidence)
+    try:
+        if prediction and prediction.detections:
+            top_detection = max(prediction.detections, key=lambda detection: detection.confidence)
+    except Exception as e:
+        logger.error(f"Error calculating top detection: {e}")
 
     return ImageOut(
         id=str(result.inserted_id),
@@ -174,16 +177,25 @@ async def list_visit_images(
     async for image in cursor:
         from app.routers.images import _image_doc_to_out
 
-        # We need to fetch the top prediction for each image
-        image_out = _image_doc_to_out(image)
+        try:
+            # We need to fetch the top prediction for each image
+            image_out = _image_doc_to_out(image)
+        except Exception as e:
+            import logging
+            logging.error(f"Error mapping image_doc_to_out for image {image.get('_id')}: {e}")
+            continue
         prediction = await db.predictions.find_one(
             {"imageId": str(image["_id"])}, sort=[("createdAt", -1)]
         )
 
         top_prediction = None
-        if prediction and prediction.get("detections"):
-            top_detection = max(prediction["detections"], key=lambda d: d.get("confidence", 0))
-            top_prediction = top_detection.get("disease_name")
+        try:
+            if prediction and prediction.get("detections"):
+                top_detection = max(prediction["detections"], key=lambda d: d.get("confidence", 0))
+                top_prediction = top_detection.get("disease_name")
+        except Exception as e:
+            import logging
+            logging.error(f"Error extracting top prediction for image {image['_id']}: {e}")
 
         image_out.top_prediction = top_prediction
         images.append(image_out)
