@@ -7,7 +7,11 @@ import { TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { Role } from "@/lib/auth";
+import { getLatestPrediction } from "@/lib/images";
 import { VisitImage, uploadVisitImage, listVisitImages, deleteVisitImage } from "@/lib/visits";
+
+const PREDICTION_POLL_INTERVAL_MS = 3000;
+const PREDICTION_POLL_MAX_ATTEMPTS = 20; // ~60s -- AI inference on the free-tier backend can take 20-30s+
 
 interface VisitImageUploadProps {
   patientId: string;
@@ -54,6 +58,7 @@ function VisitImageUploadContent({
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -67,6 +72,45 @@ function VisitImageUploadContent({
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, []);
+
+  function applyPrediction(imageId: string, topPrediction: string | null) {
+    setExistingImages((prev) =>
+      prev.map((img) => (img.id === imageId ? { ...img, top_prediction: topPrediction } : img))
+    );
+    setUploadedImage((prev) =>
+      prev && prev.id === imageId ? { ...prev, top_prediction: topPrediction } : prev
+    );
+  }
+
+  function pollForPrediction(imageId: string) {
+    setAnalyzingIds((prev) => new Set(prev).add(imageId));
+
+    let attempts = 0;
+    const stop = () => {
+      setAnalyzingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(imageId);
+        return next;
+      });
+      clearInterval(timer);
+    };
+
+    const timer = setInterval(async () => {
+      attempts += 1;
+      try {
+        const prediction = await getLatestPrediction(imageId);
+        const top = prediction.detections.reduce<typeof prediction.detections[number] | null>(
+          (best, detection) => (!best || detection.confidence > best.confidence ? detection : best),
+          null
+        );
+        applyPrediction(imageId, top?.disease_name ?? null);
+        stop();
+      } catch {
+        // 404 = AI analysis hasn't finished yet; keep polling until the cap.
+        if (attempts >= PREDICTION_POLL_MAX_ATTEMPTS) stop();
+      }
+    }, PREDICTION_POLL_INTERVAL_MS);
+  }
 
   function clearPreviewUrl() {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -101,6 +145,7 @@ function VisitImageUploadContent({
       clearPreviewUrl();
       if (inputRef.current) inputRef.current.value = "";
       addToast("Image uploaded successfully", "success");
+      pollForPrediction(image.id);
     } catch {
       setError("Unable to upload image. Please choose a JPEG or PNG under 5 MB.");
       addToast("Upload failed", "error");
@@ -146,7 +191,9 @@ function VisitImageUploadContent({
                   className="aspect-[4/3] w-full rounded border border-border bg-background dark:bg-black object-contain"
                 />
                 <div className="flex items-center justify-between">
-                  {img.top_prediction ? (
+                  {analyzingIds.has(img.id) ? (
+                    <span className="text-sm text-text-secondary italic">AI: Analyzing…</span>
+                  ) : img.top_prediction ? (
                     <span className="text-sm font-medium text-foreground">AI: {img.top_prediction}</span>
                   ) : (
                     <span className="text-sm text-text-secondary">AI: No conditions detected</span>
@@ -216,7 +263,13 @@ function VisitImageUploadContent({
               </p>
             ) : null}
 
-            {uploadedImage?.top_prediction ? (
+            {uploadedImage && analyzingIds.has(uploadedImage.id) ? (
+              <div className="flex items-center gap-2 rounded border border-border bg-background p-3">
+                <p className="text-sm text-text-secondary italic">
+                  Analyzing image for AI detections… this can take up to a minute.
+                </p>
+              </div>
+            ) : uploadedImage?.top_prediction ? (
               <div className="flex flex-col gap-2 rounded border border-border bg-background p-3">
                 <p className="text-sm font-medium text-foreground">
                   Top AI prediction: {uploadedImage.top_prediction}

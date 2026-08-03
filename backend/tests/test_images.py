@@ -45,7 +45,7 @@ def _insert_image(fake_db: FakeDB) -> str:
 
 async def test_predict_image_saves_expected_json_shape(fake_db, monkeypatch):
     class FakePredictor:
-        def predict(self, image_url: str) -> list[DetectionOut]:
+        def predict(self, image_url: str, image_bytes=None) -> list[DetectionOut]:
             assert image_url == "https://cloudinary.example/tooth.jpg"
             return [
                 DetectionOut(

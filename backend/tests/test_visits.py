@@ -171,6 +171,7 @@ async def test_upload_visit_image_returns_url(monkeypatch):
 
 async def test_upload_visit_image_triggers_prediction(monkeypatch):
     import app.routers.visits as visits_module
+    from fastapi import BackgroundTasks
     from app.models.prediction import BoundingBox, DetectionOut, PredictionOut
     from datetime import datetime, timezone
 
@@ -178,25 +179,52 @@ async def test_upload_visit_image_triggers_prediction(monkeypatch):
         visits_module, "upload_image", lambda file_bytes, folder: "https://cloudinary/test.jpg"
     )
 
-    async def fake_create_prediction_for_image(image_id, image, db):
+    async def fake_create_prediction_for_image(image_id, image, db, image_bytes=None):
+        # Mirror what the real create_prediction_for_image does: persist to
+        # db.predictions, not just return an in-memory object. The background
+        # task only has DB-persisted state to work with -- there's no longer an
+        # immediate HTTP response that can carry the return value directly.
+        detections = [
+            DetectionOut(
+                class_id=1,
+                disease_name="plaque",
+                confidence=0.91,
+                box=BoundingBox(x1=1, y1=2, x2=3, y2=4),
+            )
+        ]
+        doc = {
+            "imageId": image_id,
+            "detections": [d.model_dump() for d in detections],
+            "latencyMs": 12,
+            "createdAt": datetime.now(timezone.utc),
+        }
+        result = await db.predictions.insert_one(doc)
+        doc["_id"] = result.inserted_id
         return PredictionOut(
-            id="prediction-1",
+            id=str(doc["_id"]),
             image_id=image_id,
-            detections=[
-                DetectionOut(
-                    class_id=1,
-                    disease_name="plaque",
-                    confidence=0.91,
-                    box=BoundingBox(x1=1, y1=2, x2=3, y2=4),
-                )
-            ],
+            detections=detections,
             latency_ms=12,
-            created_at=datetime.now(timezone.utc),
+            created_at=doc["createdAt"],
         )
 
     monkeypatch.setattr(
         visits_module, "create_prediction_for_image", fake_create_prediction_for_image
     )
+
+    # Whether Starlette actually runs a scheduled BackgroundTask before this
+    # ASGI test transport hands control back isn't guaranteed, so don't rely on
+    # that timing. Instead capture what gets scheduled (proving the upload
+    # endpoint wires up the background job correctly) and invoke it directly
+    # (proving that job itself does the right thing) -- decoupling "did we
+    # schedule the right work" from "does the framework's scheduler run it",
+    # which is Starlette's own responsibility, not this app's.
+    captured_tasks = []
+
+    def fake_add_task(self, func, *args, **kwargs):
+        captured_tasks.append((func, args, kwargs))
+
+    monkeypatch.setattr(BackgroundTasks, "add_task", fake_add_task)
 
     async with await _client() as client:
         patient_id = await _create_patient(client)
@@ -207,8 +235,25 @@ async def test_upload_visit_image_triggers_prediction(monkeypatch):
             files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
         )
 
-    assert response.status_code == 201
-    assert response.json()["top_prediction"] == "plaque"
+        # The upload response returns immediately, before AI prediction runs, so
+        # the client isn't blocked on inference latency -- top_prediction isn't
+        # known yet at this point.
+        assert response.status_code == 201
+        assert response.json()["top_prediction"] is None
+        image_id = response.json()["id"]
+
+        assert len(captured_tasks) == 1
+        func, args, kwargs = captured_tasks[0]
+        assert func is visits_module._run_prediction_in_background
+        assert args[0] == image_id
+        assert args[2] == b"fake-image-bytes"
+
+        await func(*args, **kwargs)
+
+        latest = await client.get(f"/api/images/{image_id}/predictions/latest")
+
+    assert latest.status_code == 200
+    assert latest.json()["detections"][0]["disease_name"] == "plaque"
 
 
 async def test_upload_image_for_unknown_visit_returns_404():

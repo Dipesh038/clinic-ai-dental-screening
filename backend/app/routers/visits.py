@@ -3,7 +3,16 @@ import logging
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.cloudinary_client import upload_image
@@ -116,6 +125,22 @@ async def update_visit(
     return _doc_to_out(doc)
 
 
+async def _run_prediction_in_background(
+    image_id: str, doc: dict, file_bytes: bytes, db: AsyncIOMotorDatabase
+) -> None:
+    # Runs after the upload response has already been sent. AI inference on the
+    # free-tier backend's CPU can take 20-30+ seconds; blocking the upload
+    # request on it made every upload feel that slow. Takes the same `db`
+    # handle the request was injected with (Motor's client is a shared,
+    # long-lived connection pool, so reusing it post-response is safe) rather
+    # than re-resolving get_database(), which would bypass FastAPI's
+    # dependency-override mechanism and silently skip the test DB in tests.
+    try:
+        await create_prediction_for_image(image_id, doc, db, image_bytes=file_bytes)
+    except Exception:
+        logger.exception("Automatic AI prediction failed for image_id=%s", image_id)
+
+
 @router.post(
     "/api/visits/{visit_id}/images",
     response_model=ImageOut,
@@ -124,6 +149,7 @@ async def update_visit(
 )
 async def upload_visit_image(
     visit_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ) -> ImageOut:
@@ -151,25 +177,15 @@ async def upload_visit_image(
     doc = {"visitId": visit_id, "imageUrl": image_url}
     result = await db.images.insert_one(doc)
     doc["_id"] = result.inserted_id
+    image_id = str(result.inserted_id)
 
-    prediction = None
-    try:
-        prediction = await create_prediction_for_image(str(result.inserted_id), doc, db, image_bytes=file_bytes)
-    except Exception:
-        logger.exception("Automatic AI prediction failed for image_id=%s", result.inserted_id)
-
-    top_detection = None
-    try:
-        if prediction and prediction.detections:
-            top_detection = max(prediction.detections, key=lambda detection: detection.confidence)
-    except Exception as e:
-        logger.error(f"Error calculating top detection: {e}")
+    background_tasks.add_task(_run_prediction_in_background, image_id, doc, file_bytes, db)
 
     return ImageOut(
-        id=str(result.inserted_id),
+        id=image_id,
         visit_id=visit_id,
         image_url=image_url,
-        top_prediction=top_detection.disease_name if top_detection else None,
+        top_prediction=None,
     )
 
 
