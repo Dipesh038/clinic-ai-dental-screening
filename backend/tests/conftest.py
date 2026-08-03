@@ -8,6 +8,9 @@ def _matches(doc: dict, query: dict) -> bool:
         if isinstance(value, dict) and "$exists" in value:
             if (key in doc) != value["$exists"]:
                 return False
+        elif isinstance(value, dict) and "$in" in value:
+            if doc.get(key) not in value["$in"]:
+                return False
         elif doc.get(key) != value:
             return False
     return True

@@ -200,23 +200,29 @@ async def list_visit_images(
     if visit is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit not found")
 
-    cursor = db.images.find({"visitId": visit_id}).sort("_id", -1)
+    from app.routers.images import _image_doc_to_out
+
+    visit_images = [image async for image in db.images.find({"visitId": visit_id}).sort("_id", -1)]
+    image_ids = [str(image["_id"]) for image in visit_images]
+
+    # One query for every image's latest prediction instead of one query per
+    # image -- was N+1 round-trips for N images, now 2 total.
+    latest_prediction_by_image: dict[str, dict] = {}
+    async for prediction in db.predictions.find({"imageId": {"$in": image_ids}}).sort(
+        "createdAt", -1
+    ):
+        latest_prediction_by_image.setdefault(prediction["imageId"], prediction)
 
     images = []
-    async for image in cursor:
-        from app.routers.images import _image_doc_to_out
-
+    for image in visit_images:
         try:
-            # We need to fetch the top prediction for each image
             image_out = _image_doc_to_out(image)
         except Exception as e:
             import logging
             logging.error(f"Error mapping image_doc_to_out for image {image.get('_id')}: {e}")
             continue
-        prediction = await db.predictions.find_one(
-            {"imageId": str(image["_id"])}, sort=[("createdAt", -1)]
-        )
 
+        prediction = latest_prediction_by_image.get(str(image["_id"]))
         top_prediction = None
         try:
             if prediction and prediction.get("detections"):
@@ -245,17 +251,31 @@ async def download_visit_report(
     if patient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
+    visit_images = [image async for image in db.images.find({"visitId": visit_id})]
+    image_ids = [str(image["_id"]) for image in visit_images]
+
+    # One query per collection for the whole visit instead of two per image --
+    # was 2N+1 round-trips for N images, now 3 total. Sorted newest-first, so
+    # the first entry seen per imageId while building the map below is the
+    # latest one (matches the per-image find_one(..., sort=[("createdAt", -1)])
+    # this replaces).
+    latest_correction_by_image: dict[str, dict] = {}
+    async for correction in db.corrections.find({"imageId": {"$in": image_ids}}).sort(
+        "createdAt", -1
+    ):
+        latest_correction_by_image.setdefault(correction["imageId"], correction)
+
+    latest_prediction_by_image: dict[str, dict] = {}
+    async for prediction in db.predictions.find({"imageId": {"$in": image_ids}}).sort(
+        "createdAt", -1
+    ):
+        latest_prediction_by_image.setdefault(prediction["imageId"], prediction)
+
     images = []
-    cursor = db.images.find({"visitId": visit_id})
-    async for image in cursor:
+    for image in visit_images:
         image_id = str(image["_id"])
-
-        # Get latest correction
-        correction = await db.corrections.find_one({"imageId": image_id}, sort=[("createdAt", -1)])
-
-        # Get latest prediction
-        prediction = await db.predictions.find_one({"imageId": image_id}, sort=[("createdAt", -1)])
-
+        correction = latest_correction_by_image.get(image_id)
+        prediction = latest_prediction_by_image.get(image_id)
         images.append(
             {
                 "image": image,

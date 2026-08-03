@@ -59,6 +59,7 @@ function VisitImageUploadContent({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
+  const activePollTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -68,8 +69,16 @@ function VisitImageUploadContent({
   }, [visitId]);
 
   useEffect(() => {
+    const timers = activePollTimers.current;
     return () => {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+      // Stop any in-flight prediction polling -- without this, navigating away
+      // mid-poll leaves setInterval firing (up to ~60s of it) and calling
+      // setState on an unmounted component. `timers` is the same Set instance
+      // for the component's whole life (useRef never recreates it), so this
+      // still sees every timer added by any poll started after mount.
+      timers.forEach((timer) => clearInterval(timer));
+      timers.clear();
     };
   }, []);
 
@@ -93,6 +102,7 @@ function VisitImageUploadContent({
         return next;
       });
       clearInterval(timer);
+      activePollTimers.current.delete(timer);
     };
 
     const timer = setInterval(async () => {
@@ -110,6 +120,8 @@ function VisitImageUploadContent({
         if (attempts >= PREDICTION_POLL_MAX_ATTEMPTS) stop();
       }
     }, PREDICTION_POLL_INTERVAL_MS);
+
+    activePollTimers.current.add(timer);
   }
 
   function clearPreviewUrl() {
