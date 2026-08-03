@@ -4,11 +4,12 @@ import io
 from PIL import Image
 import numpy as np
 
-import torchvision.transforms as transforms
-from torchvision.models import resnet18, ResNet18_Weights
-
-from pytorch_grad_cam import GradCAM
-from pytorch_grad_cam.utils.image import show_cam_on_image
+# torchvision/pytorch_grad_cam (and their opencv/matplotlib dependencies) are
+# only imported inside these functions, not at module load time. This file is
+# imported eagerly at app startup via app.routers.images, and Grad-CAM is an
+# optional stretch feature -- most requests (upload/predict) never touch it,
+# so paying its import memory cost on every process start was wasteful on the
+# free-tier backend's 512MB RAM ceiling.
 
 # Load a pretrained ResNet18 model (dummy classifier for demonstration)
 # We use standard ImageNet weights.
@@ -20,6 +21,9 @@ _cam = None
 def get_cam():
     global _model, _target_layers, _cam
     if _cam is None:
+        from torchvision.models import resnet18, ResNet18_Weights
+        from pytorch_grad_cam import GradCAM
+
         _model = resnet18(weights=ResNet18_Weights.DEFAULT)
         _model.eval()
         _target_layers = [_model.layer4[-1]]
@@ -32,6 +36,9 @@ def generate_heatmap_for_crop(image: Image.Image) -> bytes:
     Generates a Grad-CAM heatmap for a given image crop using a pretrained ResNet18.
     Returns the heatmap image as JPEG bytes.
     """
+    import torchvision.transforms as transforms
+    from pytorch_grad_cam.utils.image import show_cam_on_image
+
     cam, model = get_cam()
 
     # Preprocess image for ResNet
