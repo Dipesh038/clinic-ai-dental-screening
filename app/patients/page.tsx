@@ -54,9 +54,11 @@ export default function PatientListPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Link href="/patients/new">
-            <Button>Add Patient</Button>
-          </Link>
+          {user.role !== "admin" && (
+            <Link href="/patients/new">
+              <Button>Add Patient</Button>
+            </Link>
+          )}
         </div>
 
         {error ? <p className="text-[#d32f2f] dark:text-[#ef5350]">{error}</p> : null}

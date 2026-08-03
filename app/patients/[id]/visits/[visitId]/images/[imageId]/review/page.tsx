@@ -103,6 +103,9 @@ export default function AiReviewPage() {
     return null;
   }
 
+  // Backend restricts corrections/mark-reviewed to dentist; admin gets read-only oversight.
+  const canManage = user.role === "dentist";
+
   const handleEditClick = () => setIsEditing(true);
 
   const handleCancel = () => {
@@ -269,7 +272,7 @@ export default function AiReviewPage() {
               </h1>
 
               <div className="flex flex-wrap items-center gap-2">
-                {!isEditing && (
+                {!isEditing && canManage && (
                   <>
                     <Button variant="ghost" onClick={handleEditClick}>
                       Edit Corrections
@@ -281,7 +284,7 @@ export default function AiReviewPage() {
                     )}
                   </>
                 )}
-                {isEditing && (
+                {isEditing && canManage && (
                   <>
                     <div className="mr-4 flex items-center gap-2">
                       <label className="text-sm text-text-secondary">New box label:</label>

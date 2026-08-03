@@ -16,10 +16,17 @@ from app.models.visit import VisitCreate, VisitOut, VisitUpdate
 from app.routers.images import create_prediction_for_image
 from app.report import generate_pdf_report
 
-router = APIRouter(
-    tags=["visits"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))]
-)
+router = APIRouter(tags=["visits"])
 logger = logging.getLogger("app.visits")
+
+# Front-desk actions (scheduling/records): dentist + receptionist.
+_frontdesk = Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))
+# Read-only for everyone, including admin oversight.
+_view = Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))
+# Clinical work (uploading/reviewing images): dentist only.
+_clinical = Depends(require_role(Role.DENTIST))
+# Clinical read (image list exposes AI predictions): dentist + admin, not receptionist.
+_clinical_view = Depends(require_role(Role.DENTIST, Role.ADMIN))
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -49,7 +56,9 @@ async def _get_active_patient(db: AsyncIOMotorDatabase, patient_id: str) -> dict
     return patient
 
 
-@router.get("/api/patients/{patient_id}/visits", response_model=list[VisitOut])
+@router.get(
+    "/api/patients/{patient_id}/visits", response_model=list[VisitOut], dependencies=[_view]
+)
 async def list_visits_for_patient(
     patient_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> list[VisitOut]:
@@ -62,6 +71,7 @@ async def list_visits_for_patient(
     "/api/patients/{patient_id}/visits",
     response_model=VisitOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_frontdesk],
 )
 async def create_visit(
     patient_id: str, visit: VisitCreate, db: AsyncIOMotorDatabase = Depends(get_database)
@@ -78,7 +88,7 @@ async def create_visit(
     return _doc_to_out(doc)
 
 
-@router.get("/api/visits/{visit_id}", response_model=VisitOut)
+@router.get("/api/visits/{visit_id}", response_model=VisitOut, dependencies=[_view])
 async def get_visit(visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)) -> VisitOut:
     doc = await db.visits.find_one({"_id": _to_object_id(visit_id)})
     if doc is None:
@@ -86,7 +96,7 @@ async def get_visit(visit_id: str, db: AsyncIOMotorDatabase = Depends(get_databa
     return _doc_to_out(doc)
 
 
-@router.put("/api/visits/{visit_id}", response_model=VisitOut)
+@router.put("/api/visits/{visit_id}", response_model=VisitOut, dependencies=[_frontdesk])
 async def update_visit(
     visit_id: str, visit: VisitUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> VisitOut:
@@ -110,6 +120,7 @@ async def update_visit(
     "/api/visits/{visit_id}/images",
     response_model=ImageOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[_clinical],
 )
 async def upload_visit_image(
     visit_id: str,
@@ -162,7 +173,9 @@ async def upload_visit_image(
     )
 
 
-@router.get("/api/visits/{visit_id}/images", response_model=list[ImageOut])
+@router.get(
+    "/api/visits/{visit_id}/images", response_model=list[ImageOut], dependencies=[_clinical_view]
+)
 async def list_visit_images(
     visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> list[ImageOut]:
@@ -203,7 +216,7 @@ async def list_visit_images(
     return images
 
 
-@router.get("/api/visits/{visit_id}/report", response_class=Response)
+@router.get("/api/visits/{visit_id}/report", response_class=Response, dependencies=[_view])
 async def download_visit_report(
     visit_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> Response:

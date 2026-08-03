@@ -113,12 +113,38 @@ async def test_visits_require_authentication():
     assert response.status_code == 401
 
 
-async def test_admin_role_forbidden_from_visits():
-    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        username="admin1", role=Role.ADMIN
-    )
+async def test_admin_role_can_view_visits():
     async with await _client() as client:
-        response = await client.get("/api/patients/000000000000000000000000/visits")
+        patient_id = await _create_patient(client)
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="admin1", role=Role.ADMIN
+        )
+        response = await client.get(f"/api/patients/{patient_id}/visits")
+    assert response.status_code == 200
+
+
+async def test_admin_role_forbidden_from_creating_visits():
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="admin1", role=Role.ADMIN
+        )
+        response = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+    assert response.status_code == 403
+
+
+async def test_receptionist_role_forbidden_from_uploading_images():
+    async with await _client() as client:
+        patient_id = await _create_patient(client)
+        create_resp = await client.post(f"/api/patients/{patient_id}/visits", json=VISIT_PAYLOAD)
+        visit_id = create_resp.json()["id"]
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="reception1", role=Role.RECEPTIONIST
+        )
+        response = await client.post(
+            f"/api/visits/{visit_id}/images",
+            files={"file": ("tooth.jpg", b"fake-image-bytes", "image/jpeg")},
+        )
     assert response.status_code == 403
 
 

@@ -72,7 +72,7 @@ export default function VisitDetailPage() {
                 <dt className="text-text-secondary">Notes</dt>
                 <dd className="text-foreground">{visit.notes || "—"}</dd>
               </dl>
-              <VisitImageUpload patientId={params.id} visitId={visit.id} />
+              <VisitImageUpload patientId={params.id} visitId={visit.id} role={user.role} />
             </Card>
           ) : null}
         </div>

@@ -21,10 +21,12 @@ from app.models.correction import CorrectionIn, CorrectionOut, CorrectionItem
 from app.models.user import Role
 from app.grad_cam import generate_heatmap_for_crop
 
-router = APIRouter(
-    tags=["images"], dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))]
-)
+router = APIRouter(tags=["images"])
 logger = logging.getLogger("app.images")
+
+# All image endpoints are clinical work: dentist does it, admin can view for oversight.
+_clinical = Depends(require_role(Role.DENTIST))
+_clinical_view = Depends(require_role(Role.DENTIST, Role.ADMIN))
 
 
 def _to_object_id(id_str: str) -> ObjectId:
@@ -82,7 +84,7 @@ async def create_prediction_for_image(
     return _doc_to_out(doc)
 
 
-@router.get("/api/images/{image_id}", response_model=ImageOut)
+@router.get("/api/images/{image_id}", response_model=ImageOut, dependencies=[_clinical_view])
 async def get_image(image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)) -> ImageOut:
     image = await db.images.find_one({"_id": _to_object_id(image_id)})
     if image is None:
@@ -90,7 +92,9 @@ async def get_image(image_id: str, db: AsyncIOMotorDatabase = Depends(get_databa
     return _image_doc_to_out(image)
 
 
-@router.delete("/api/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/api/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[_clinical]
+)
 async def delete_image(image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     object_id = _to_object_id(image_id)
     image = await db.images.find_one({"_id": object_id})
@@ -103,7 +107,11 @@ async def delete_image(image_id: str, db: AsyncIOMotorDatabase = Depends(get_dat
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/api/images/{image_id}/predictions/latest", response_model=PredictionOut)
+@router.get(
+    "/api/images/{image_id}/predictions/latest",
+    response_model=PredictionOut,
+    dependencies=[_clinical_view],
+)
 async def get_latest_prediction(
     image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> PredictionOut:
@@ -118,7 +126,9 @@ async def get_latest_prediction(
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
 
 
-@router.post("/api/images/{image_id}/predict", response_model=PredictionOut)
+@router.post(
+    "/api/images/{image_id}/predict", response_model=PredictionOut, dependencies=[_clinical]
+)
 async def predict_image(
     image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> PredictionOut:
@@ -135,7 +145,9 @@ async def predict_image(
     return prediction
 
 
-@router.post("/api/images/{image_id}/corrections", response_model=CorrectionOut)
+@router.post(
+    "/api/images/{image_id}/corrections", response_model=CorrectionOut, dependencies=[_clinical]
+)
 async def save_corrections(
     image_id: str, correction_in: CorrectionIn, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> CorrectionOut:
@@ -159,7 +171,11 @@ async def save_corrections(
     )
 
 
-@router.get("/api/images/{image_id}/corrections/latest", response_model=CorrectionOut)
+@router.get(
+    "/api/images/{image_id}/corrections/latest",
+    response_model=CorrectionOut,
+    dependencies=[_clinical_view],
+)
 async def get_latest_correction(
     image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> CorrectionOut:
@@ -179,7 +195,9 @@ async def get_latest_correction(
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Corrections not found")
 
 
-@router.post("/api/images/{image_id}/mark-reviewed", response_model=ImageOut)
+@router.post(
+    "/api/images/{image_id}/mark-reviewed", response_model=ImageOut, dependencies=[_clinical]
+)
 async def mark_image_reviewed(
     image_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> ImageOut:
@@ -194,7 +212,11 @@ async def mark_image_reviewed(
     return _image_doc_to_out(image)
 
 
-@router.get("/api/images/{image_id}/heatmap/{detection_index}", response_class=Response)
+@router.get(
+    "/api/images/{image_id}/heatmap/{detection_index}",
+    response_class=Response,
+    dependencies=[_clinical_view],
+)
 async def get_image_heatmap(
     image_id: str, detection_index: int, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> Response:

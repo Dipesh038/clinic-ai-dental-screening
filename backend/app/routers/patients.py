@@ -10,11 +10,11 @@ from app.dependencies import require_role
 from app.models.patient import PatientCreate, PatientOut, PatientUpdate
 from app.models.user import Role
 
-router = APIRouter(
-    prefix="/api/patients",
-    tags=["patients"],
-    dependencies=[Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))],
-)
+router = APIRouter(prefix="/api/patients", tags=["patients"])
+
+_view = Depends(require_role(Role.DENTIST, Role.RECEPTIONIST, Role.ADMIN))
+_edit = Depends(require_role(Role.DENTIST, Role.RECEPTIONIST))
+_delete = Depends(require_role(Role.DENTIST))
 
 
 def _to_object_id(patient_id: str) -> ObjectId:
@@ -42,13 +42,15 @@ def _dob_to_datetime(dob: date) -> datetime:
     return datetime.combine(dob, datetime.min.time())
 
 
-@router.get("", response_model=list[PatientOut])
+@router.get("", response_model=list[PatientOut], dependencies=[_view])
 async def list_patients(db: AsyncIOMotorDatabase = Depends(get_database)) -> list[PatientOut]:
     cursor = db.patients.find({"isDeleted": False})
     return [_doc_to_out(doc) async for doc in cursor]
 
 
-@router.post("", response_model=PatientOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=PatientOut, status_code=status.HTTP_201_CREATED, dependencies=[_edit]
+)
 async def create_patient(
     patient: PatientCreate, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> PatientOut:
@@ -65,7 +67,7 @@ async def create_patient(
     return _doc_to_out(doc)
 
 
-@router.get("/{patient_id}", response_model=PatientOut)
+@router.get("/{patient_id}", response_model=PatientOut, dependencies=[_view])
 async def get_patient(
     patient_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> PatientOut:
@@ -75,7 +77,7 @@ async def get_patient(
     return _doc_to_out(doc)
 
 
-@router.put("/{patient_id}", response_model=PatientOut)
+@router.put("/{patient_id}", response_model=PatientOut, dependencies=[_edit])
 async def update_patient(
     patient_id: str,
     patient: PatientUpdate,
@@ -101,7 +103,7 @@ async def update_patient(
     return _doc_to_out(doc)
 
 
-@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[_delete])
 async def delete_patient(patient_id: str, db: AsyncIOMotorDatabase = Depends(get_database)) -> None:
     result = await db.patients.update_one(
         {"_id": _to_object_id(patient_id), "isDeleted": False},

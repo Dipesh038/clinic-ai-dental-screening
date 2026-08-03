@@ -55,9 +55,11 @@ export default function PatientProfilePage() {
           <Card className="max-w-lg">
             <div className="mb-4 flex items-start justify-between">
               <h1 className="text-xl font-semibold text-foreground">{patient.name}</h1>
-              <Link href={`/patients/${patient.id}/edit`}>
-                <Button variant="ghost">Edit</Button>
-              </Link>
+              {user.role !== "admin" && (
+                <Link href={`/patients/${patient.id}/edit`}>
+                  <Button variant="ghost">Edit</Button>
+                </Link>
+              )}
             </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <dt className="text-text-secondary">Date of birth</dt>
@@ -76,9 +78,11 @@ export default function PatientProfilePage() {
           <div className="mt-6 max-w-lg">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Visits</h2>
-              <Link href={`/patients/${patient.id}/visits/new`}>
-                <Button variant="secondary">Add Visit</Button>
-              </Link>
+              {user.role !== "admin" && (
+                <Link href={`/patients/${patient.id}/visits/new`}>
+                  <Button variant="secondary">Add Visit</Button>
+                </Link>
+              )}
             </div>
             {visits === null ? (
               <p className="text-text-secondary">Loading visits…</p>
