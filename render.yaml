@@ -24,3 +24,5 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: "https://your-vercel-frontend-domain.vercel.app"
+      - key: ENABLE_GRAD_CAM
+        value: "false"

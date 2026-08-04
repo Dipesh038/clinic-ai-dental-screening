@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
     ai_model_weights_path: str = "ai_model/weights/best.pt"
     ai_class_names: str = "cavity,plaque,gingivitis"
+    # Grad-CAM needs gradient computation (heavier than plain YOLO inference)
+    # and permanently caches a second model in memory after first use --
+    # confirmed as the cause of a recurring OOM on Render's free 512MB tier.
+    # Defaults on so local dev/demo is unaffected; set to false in Render's
+    # env vars for the deployed backend specifically.
+    enable_grad_cam: bool = True
 
 
 settings = Settings()

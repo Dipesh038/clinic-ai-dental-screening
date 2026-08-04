@@ -13,6 +13,7 @@ from urllib.request import urlopen
 from PIL import Image
 
 from app.ai import get_predictor
+from app.config import settings
 from app.db import get_database
 from app.dependencies import require_role
 from app.models.image import ImageOut
@@ -220,6 +221,12 @@ async def mark_image_reviewed(
 async def get_image_heatmap(
     image_id: str, detection_index: int, db: AsyncIOMotorDatabase = Depends(get_database)
 ) -> Response:
+    if not settings.enable_grad_cam:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Heatmap generation is disabled in this environment",
+        )
+
     image = await db.images.find_one({"_id": _to_object_id(image_id)})
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
