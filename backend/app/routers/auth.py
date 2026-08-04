@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token
 from app.config import settings
@@ -29,7 +30,13 @@ async def login(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ) -> LoginResponse:
     user = await db.users.find_one({"username": credentials.username})
-    if user is None or not verify_password(credentials.password, user["password_hash"]):
+    # bcrypt is deliberately CPU-expensive; on the free tier's slow shared CPU
+    # it dominates login time. Run it off the event loop so one login doesn't
+    # stall every other in-flight request.
+    password_ok = user is not None and await run_in_threadpool(
+        verify_password, credentials.password, user["password_hash"]
+    )
+    if not password_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",

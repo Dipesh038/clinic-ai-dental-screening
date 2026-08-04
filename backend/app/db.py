@@ -26,6 +26,7 @@ async def ensure_indexes() -> None:
     # grows. create_index is a no-op if the index already exists, so this is
     # safe to run on every startup.
     db = get_database()
+    await db.users.create_index("username", unique=True)
     await db.patients.create_index("isDeleted")
     await db.visits.create_index([("patientId", 1), ("date", -1)])
     await db.images.create_index("visitId")
