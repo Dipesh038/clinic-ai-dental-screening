@@ -19,12 +19,12 @@ def _strip_jpeg_exif(file_bytes: bytes) -> bytes:
 
     while index + 4 <= length and file_bytes[index] == 0xFF:
         marker = file_bytes[index + 1]
-        
+
         if marker == 0xFF:
             output.append(0xFF)
             index += 1
             continue
-            
+
         if marker == 0xDA:
             output.extend(file_bytes[index:])
             return bytes(output)

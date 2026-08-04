@@ -38,7 +38,9 @@ class YoloPredictor:
         self._model = YOLO(str(weights_path))
         self._class_names = class_names
 
-    def predict(self, image_url: str | None = None, image_bytes: bytes | None = None) -> list[DetectionOut]:
+    def predict(
+        self, image_url: str | None = None, image_bytes: bytes | None = None
+    ) -> list[DetectionOut]:
         detections: list[DetectionOut] = []
         if image_bytes:
             image = Image.open(BytesIO(image_bytes))
