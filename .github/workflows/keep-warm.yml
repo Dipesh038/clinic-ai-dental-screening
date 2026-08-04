@@ -1,0 +1,36 @@
+name: Keep Backend Warm
+
+# Render's free tier spins a service down after ~15 minutes of inactivity, and
+# waking this one back up takes ~110s because it loads torch + the YOLO model at
+# startup. That made the first request after any idle period feel broken. This
+# pings /health often enough that the service never goes to sleep.
+#
+# Caveat: GitHub's scheduled workflows are best-effort and can be delayed during
+# peak load, so an occasional cold start is still possible. If that turns out to
+# matter, an external uptime pinger (UptimeRobot's free tier, 5-minute interval)
+# is more punctual than GitHub cron for this specific job.
+#
+# Note: GitHub automatically disables scheduled workflows on repositories with
+# no activity for 60 days; re-enable it from the Actions tab if that happens.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: # allows a manual run from the Actions tab
+
+jobs:
+  ping:
+    name: Ping backend health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          # --max-time is generous on purpose: if the service *has* gone to
+          # sleep, this request is what wakes it, and that takes ~110s.
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 180 \
+            https://ai-dental-screening-backend.onrender.com/health)
+          echo "Health check returned HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::Backend health check returned $code instead of 200"
+          fi
