@@ -11,7 +11,18 @@ import { getLatestPrediction } from "@/lib/images";
 import { VisitImage, uploadVisitImage, listVisitImages, deleteVisitImage } from "@/lib/visits";
 
 const PREDICTION_POLL_INTERVAL_MS = 3000;
-const PREDICTION_POLL_MAX_ATTEMPTS = 20; // ~60s -- AI inference on the free-tier backend can take 20-30s+
+const PREDICTION_POLL_MAX_ATTEMPTS = 30; // ~90s ceiling
+// Rough expected duration used only to animate the progress bar. YOLO reports
+// no real progress, so this is an elapsed-time estimate, not true progress --
+// the bar is capped below 100% until the result actually arrives so it never
+// claims to be finished when it isn't.
+const PREDICTION_EXPECTED_MS = 30000;
+
+type AnalysisStatus = "analyzing" | "timedout";
+interface AnalysisState {
+  startedAt: number;
+  status: AnalysisStatus;
+}
 
 interface VisitImageUploadProps {
   patientId: string;
@@ -58,9 +69,19 @@ function VisitImageUploadContent({
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
-  const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
+  const [analysis, setAnalysis] = useState<Record<string, AnalysisState>>({});
+  const [, setTick] = useState(0);
   const activePollTimers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
   const { addToast } = useToast();
+
+  const hasActiveAnalysis = Object.values(analysis).some((a) => a.status === "analyzing");
+
+  // Drives the progress bar animation while something is analyzing.
+  useEffect(() => {
+    if (!hasActiveAnalysis) return;
+    const ticker = setInterval(() => setTick((t) => t + 1), 500);
+    return () => clearInterval(ticker);
+  }, [hasActiveAnalysis]);
 
   useEffect(() => {
     listVisitImages(visitId)
@@ -92,17 +113,39 @@ function VisitImageUploadContent({
   }
 
   function pollForPrediction(imageId: string) {
-    setAnalyzingIds((prev) => new Set(prev).add(imageId));
+    setAnalysis((prev) => ({
+      ...prev,
+      [imageId]: { startedAt: Date.now(), status: "analyzing" },
+    }));
 
     let attempts = 0;
-    const stop = () => {
-      setAnalyzingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(imageId);
-        return next;
-      });
+
+    const clearTimer = () => {
       clearInterval(timer);
       activePollTimers.current.delete(timer);
+    };
+
+    // Finished: a real prediction came back (possibly with zero detections,
+    // which legitimately means "nothing found").
+    const finish = () => {
+      setAnalysis((prev) => {
+        const next = { ...prev };
+        delete next[imageId];
+        return next;
+      });
+      clearTimer();
+    };
+
+    // Gave up waiting. Deliberately does NOT clear the entry -- leaving it as
+    // "timedout" keeps the UI honest, since falling through to a null
+    // top_prediction would render as "No conditions detected", i.e. claim the
+    // AI found nothing when it simply never reported back.
+    const giveUp = () => {
+      setAnalysis((prev) => ({
+        ...prev,
+        [imageId]: { ...prev[imageId], status: "timedout" },
+      }));
+      clearTimer();
     };
 
     const timer = setInterval(async () => {
@@ -114,14 +157,58 @@ function VisitImageUploadContent({
           null
         );
         applyPrediction(imageId, top?.disease_name ?? null);
-        stop();
+        finish();
       } catch {
         // 404 = AI analysis hasn't finished yet; keep polling until the cap.
-        if (attempts >= PREDICTION_POLL_MAX_ATTEMPTS) stop();
+        if (attempts >= PREDICTION_POLL_MAX_ATTEMPTS) giveUp();
       }
     }, PREDICTION_POLL_INTERVAL_MS);
 
     activePollTimers.current.add(timer);
+  }
+
+  function renderAnalysisStatus(imageId: string, topPrediction: string | null) {
+    const state = analysis[imageId];
+
+    if (state?.status === "timedout") {
+      return (
+        <span className="text-sm text-text-secondary italic">
+          AI: Still processing — reload to check
+        </span>
+      );
+    }
+
+    if (state?.status === "analyzing") {
+      const elapsedMs = Date.now() - state.startedAt;
+      const elapsedSec = Math.floor(elapsedMs / 1000);
+      // Capped below 100% -- see PREDICTION_EXPECTED_MS.
+      const percent = Math.min(95, Math.round((elapsedMs / PREDICTION_EXPECTED_MS) * 100));
+      return (
+        <span className="flex min-w-[11rem] flex-1 flex-col gap-1">
+          <span className="text-sm text-text-secondary italic">
+            AI: Analyzing… {elapsedSec}s
+          </span>
+          <span
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+            aria-label="AI analysis progress"
+            className="block h-1.5 w-full overflow-hidden rounded-full bg-border"
+          >
+            <span
+              className="block h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
+              style={{ width: `${percent}%` }}
+            />
+          </span>
+        </span>
+      );
+    }
+
+    if (topPrediction) {
+      return <span className="text-sm font-medium text-foreground">AI: {topPrediction}</span>;
+    }
+    return <span className="text-sm text-text-secondary">AI: No conditions detected</span>;
   }
 
   function clearPreviewUrl() {
@@ -202,15 +289,9 @@ function VisitImageUploadContent({
                   alt="Existing dental image"
                   className="aspect-[4/3] w-full rounded border border-border bg-background dark:bg-black object-contain"
                 />
-                <div className="flex items-center justify-between">
-                  {analyzingIds.has(img.id) ? (
-                    <span className="text-sm text-text-secondary italic">AI: Analyzing…</span>
-                  ) : img.top_prediction ? (
-                    <span className="text-sm font-medium text-foreground">AI: {img.top_prediction}</span>
-                  ) : (
-                    <span className="text-sm text-text-secondary">AI: No conditions detected</span>
-                  )}
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-4">
+                  {renderAnalysisStatus(img.id, img.top_prediction)}
+                  <div className="flex shrink-0 items-center gap-3">
                     <Link
                       href={`/patients/${patientId}/visits/${visitId}/images/${img.id}/review`}
                       className="text-sm font-medium text-primary hover:underline"
@@ -275,11 +356,9 @@ function VisitImageUploadContent({
               </p>
             ) : null}
 
-            {uploadedImage && analyzingIds.has(uploadedImage.id) ? (
-              <div className="flex items-center gap-2 rounded border border-border bg-background p-3">
-                <p className="text-sm text-text-secondary italic">
-                  Analyzing image for AI detections… this can take up to a minute.
-                </p>
+            {uploadedImage && analysis[uploadedImage.id] ? (
+              <div className="rounded border border-border bg-background p-3">
+                {renderAnalysisStatus(uploadedImage.id, uploadedImage.top_prediction)}
               </div>
             ) : uploadedImage?.top_prediction ? (
               <div className="flex flex-col gap-2 rounded border border-border bg-background p-3">
