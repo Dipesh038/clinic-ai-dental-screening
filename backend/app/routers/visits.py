@@ -14,6 +14,7 @@ from fastapi import (
     status,
 )
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from starlette.concurrency import run_in_threadpool
 
 from app.cloudinary_client import upload_image
 from app.db import get_database
@@ -171,8 +172,15 @@ async def upload_visit_image(
             detail="Image must be smaller than 5 MB",
         )
 
-    file_bytes = strip_exif_metadata(file_bytes, file.content_type or "")
-    image_url = upload_image(file_bytes, folder=f"visits/{visit_id}")
+    # Both of these are blocking sync calls (byte scanning, then a synchronous
+    # Cloudinary HTTP upload). Running them directly in this async handler
+    # stalled the whole single-threaded event loop -- a /health request during
+    # an in-flight upload measured 47s. Offload to a worker thread so other
+    # requests keep being served while this one waits.
+    file_bytes = await run_in_threadpool(
+        strip_exif_metadata, file_bytes, file.content_type or ""
+    )
+    image_url = await run_in_threadpool(upload_image, file_bytes, f"visits/{visit_id}")
 
     doc = {"visitId": visit_id, "imageUrl": image_url}
     result = await db.images.insert_one(doc)
@@ -284,7 +292,7 @@ async def download_visit_report(
             }
         )
 
-    pdf_bytes = generate_pdf_report(patient, visit, images)
+    pdf_bytes = await run_in_threadpool(generate_pdf_report, patient, visit, images)
 
     return Response(
         content=pdf_bytes,

@@ -8,6 +8,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from starlette.concurrency import run_in_threadpool
 from io import BytesIO
 from urllib.request import urlopen
 from PIL import Image
@@ -64,7 +65,14 @@ async def create_prediction_for_image(
         return None
 
     started_at = perf_counter()
-    detections = predictor.predict(image_url=image["imageUrl"], image_bytes=image_bytes)
+    # YOLO inference is 20-30s of blocking CPU work on the free tier (plus a
+    # blocking urlopen when no image_bytes are passed). This runs from a
+    # BackgroundTask, which executes on the event loop -- so without the
+    # threadpool hop it froze every other request for the whole inference,
+    # not just the upload that triggered it.
+    detections = await run_in_threadpool(
+        predictor.predict, image_url=image["imageUrl"], image_bytes=image_bytes
+    )
     latency_ms = round((perf_counter() - started_at) * 1000)
 
     doc = {
@@ -246,11 +254,15 @@ async def get_image_heatmap(
 
     box = detections[detection_index]["box"]
 
-    # Load original image
-    try:
+    # Load original image (blocking network fetch -- keep it off the event loop)
+    def _fetch_image() -> Image.Image:
         with urlopen(image["imageUrl"]) as response:
-            original_image = Image.open(BytesIO(response.read()))
-            original_image.load()
+            loaded = Image.open(BytesIO(response.read()))
+            loaded.load()
+            return loaded
+
+    try:
+        original_image = await run_in_threadpool(_fetch_image)
     except Exception as e:
         logger.error(f"Failed to fetch image for heatmap: {e}")
         raise HTTPException(
@@ -260,9 +272,9 @@ async def get_image_heatmap(
     # Crop to bounding box
     crop = original_image.crop((box["x1"], box["y1"], box["x2"], box["y2"]))
 
-    # Generate heatmap
+    # Generate heatmap (CPU-bound model work -- keep it off the event loop)
     try:
-        heatmap_bytes = generate_heatmap_for_crop(crop)
+        heatmap_bytes = await run_in_threadpool(generate_heatmap_for_crop, crop)
     except Exception as e:
         logger.error(f"Failed to generate heatmap: {e}")
         raise HTTPException(
