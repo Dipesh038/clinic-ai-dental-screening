@@ -1,4 +1,6 @@
 # pyrefly: ignore [missing-import]
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -8,7 +10,7 @@ from app.auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token
 from app.config import settings
 from app.db import get_database
 from app.dependencies import CurrentUser, get_current_user
-from app.security import verify_password
+from app.security import verify_and_rehash
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -33,14 +35,22 @@ async def login(
     # bcrypt is deliberately CPU-expensive; on the free tier's slow shared CPU
     # it dominates login time. Run it off the event loop so one login doesn't
     # stall every other in-flight request.
-    password_ok = user is not None and await run_in_threadpool(
-        verify_password, credentials.password, user["password_hash"]
-    )
+    password_ok = False
+    new_hash: Optional[str] = None
+    if user is not None:
+        password_ok, new_hash = await run_in_threadpool(
+            verify_and_rehash, credentials.password, user["password_hash"]
+        )
     if not password_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
+
+    # Opportunistically upgrade hashes stored at an older (slower) bcrypt cost
+    # factor so future logins for this user are fast too.
+    if new_hash is not None:
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"password_hash": new_hash}})
 
     token = create_access_token(username=user["username"], role=user["role"])
     response.set_cookie(
