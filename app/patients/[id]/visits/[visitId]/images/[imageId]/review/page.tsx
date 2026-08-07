@@ -20,6 +20,7 @@ import {
   markImageReviewed,
   saveCorrections,
   getHeatmap,
+  isHeatmapAvailable,
 } from "@/lib/images";
 import { VisitImage } from "@/lib/visits";
 
@@ -58,6 +59,7 @@ export default function AiReviewPage() {
   const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
   const [heatmapBoxIndex, setHeatmapBoxIndex] = useState<number | null>(null);
   const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
+  const [heatmapAvailable, setHeatmapAvailable] = useState(false);
 
   // Drawing state
   const imgRef = useRef<HTMLImageElement>(null);
@@ -69,6 +71,10 @@ export default function AiReviewPage() {
   useEffect(() => {
     if (failed) router.replace("/login");
   }, [failed, router]);
+
+  useEffect(() => {
+    isHeatmapAvailable().then(setHeatmapAvailable);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -393,7 +399,7 @@ export default function AiReviewPage() {
                               </span>
                             )}
                           </span>
-                          {!isEditing && !correction && (
+                          {!isEditing && !correction && heatmapAvailable && (
                              <Button 
                                variant="ghost" 
                                className="px-2 py-1 text-xs" 

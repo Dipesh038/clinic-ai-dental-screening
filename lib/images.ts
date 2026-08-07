@@ -63,6 +63,17 @@ export function markImageReviewed(imageId: string): Promise<VisitImage> {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export async function isHeatmapAvailable(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}/health`);
+    if (!response.ok) return false;
+    const body = await response.json();
+    return body.grad_cam_enabled === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function getHeatmap(imageId: string, detectionIndex: number): Promise<string> {
   const response = await fetch(`${API_URL}/api/images/${imageId}/heatmap/${detectionIndex}`, {
     credentials: "include",

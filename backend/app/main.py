@@ -46,5 +46,5 @@ app.include_router(dashboard_router)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, object]:
+    return {"status": "ok", "grad_cam_enabled": settings.enable_grad_cam}
