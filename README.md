@@ -73,8 +73,6 @@ Trained YOLOv8n model, validated on a held-out set:
 | Inference speed | 2.6 ms/image |
 | Weights size | ~6.2 MB (`best.pt`) |
 
-Full write-up: [`docs/AI_Results.md`](docs/AI_Results.md).
-
 **Grad-CAM note:** the heatmap pipeline (crop → classify → Grad-CAM → overlay) is fully
 implemented and works when run locally. It's disabled on the hosted Render backend
 (`ENABLE_GRAD_CAM=false`) because it needs gradient computation and keeps a second model
@@ -100,7 +98,7 @@ detects this automatically and hides the "Show Heatmap" option when it isn't ava
 │   ├── ai_model/weights/ # Trained YOLOv8n weights (best.pt)
 │   ├── scripts/          # Admin/user seed scripts
 │   └── tests/            # pytest suite
-└── docs/                 # Model results, roadmap, internship report
+└── docs/report/          # Screenshots used in this README
 ```
 
 ---
@@ -167,7 +165,7 @@ pytest
   working part of the project, just memory-gated on the free hosting tier.
 - **Grad-CAM uses a generic classifier:** the heatmap model is a pretrained ImageNet
   ResNet18, not a dental-specific model, so heatmaps demonstrate the pipeline rather than
-  giving medically fine-tuned explanations. Tracked in [`docs/Future_Work.md`](docs/Future_Work.md).
+  giving medically fine-tuned explanations.
 - **Single clinic only:** there's no multi-tenant/clinic entity yet — all data belongs to
   one clinic.
 
@@ -175,6 +173,12 @@ pytest
 
 ## Roadmap
 
-See [`docs/Future_Work.md`](docs/Future_Work.md) for the full list, including an automated
-model-retraining pipeline from dentist corrections, a dental-specific Grad-CAM classifier,
-trend/analytics reporting, and multi-tenant clinic support.
+- **Automated retraining pipeline** — periodically fine-tune the YOLOv8 model on the
+  ground-truth corrections dentists save via the AI Review UI, with canary/shadow-mode
+  rollout of new weights before they go clinic-wide.
+- **Dental-specific Grad-CAM classifier** — replace the generic ImageNet ResNet18 with a
+  small classifier fine-tuned on cavity/plaque images for medically relevant heatmaps.
+- **Advanced reporting** — trend analysis (disease frequency over time) and side-by-side
+  historical scan comparisons per patient.
+- **Multi-tenant clinic support** — a `Clinic` entity so multiple clinics can sign up and
+  manage isolated data independently.
